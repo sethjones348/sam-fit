@@ -8,7 +8,7 @@ import SearchBar from '../components/SearchBar';
 
 export default function WorkoutsPage() {
   const { isAuthenticated } = useAuth();
-  const { workouts, loadWorkouts } = workoutStore();
+  const { workouts, loadWorkouts, isLoading } = workoutStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredWorkouts, setFilteredWorkouts] = useState<Workout[]>([]);
 
@@ -61,7 +61,12 @@ export default function WorkoutsPage() {
           <SearchBar value={searchQuery} onChange={setSearchQuery} />
         </div>
 
-        {filteredWorkouts.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-cf-red mb-4"></div>
+            <p className="text-lg text-gray-600">Loading workouts...</p>
+          </div>
+        ) : filteredWorkouts.length === 0 ? (
           <div className="text-center py-12">
             {searchQuery ? (
               <>

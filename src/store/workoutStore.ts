@@ -24,10 +24,28 @@ export const workoutStore = create<WorkoutStore>((set, get) => ({
     try {
       // Try cache first
       const cachedWorkouts = await workoutCache.loadWorkouts();
-      set({ workouts: cachedWorkouts, isLoading: false });
-
-      // Sync from Drive in background
-      get().syncFromDrive();
+      
+      // If cache has workouts, show them immediately and sync in background
+      if (cachedWorkouts.length > 0) {
+        set({ workouts: cachedWorkouts, isLoading: false });
+        // Sync from Drive in background
+        get().syncFromDrive();
+      } else {
+        // Cache is empty, load from Drive and wait for it
+        try {
+          const driveWorkouts = await driveStorage.loadWorkouts();
+          set({ workouts: driveWorkouts, isLoading: false });
+          // Update cache
+          for (const workout of driveWorkouts) {
+            await workoutCache.saveWorkout(workout);
+          }
+        } catch (driveError) {
+          set({
+            error: driveError instanceof Error ? driveError.message : 'Failed to load workouts',
+            isLoading: false,
+          });
+        }
+      }
     } catch (error) {
       console.error('Failed to load workouts from cache:', error);
       // Fallback to Drive
