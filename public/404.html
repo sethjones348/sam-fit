@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SamFit - Workout Tracker</title>
+    <script>
+      // GitHub Pages 404 handler for React Router SPA
+      // Redirects to index.html and preserves the route
+      (function() {
+        var path = window.location.pathname;
+        var base = '/sam-fit/';
+        
+        // Extract the route after the base path
+        // e.g., /sam-fit/workouts -> /workouts
+        var route = path.replace(base, '');
+        if (!route.startsWith('/')) {
+          route = '/' + route;
+        }
+        
+        // Preserve query string and hash
+        var search = window.location.search;
+        var hash = window.location.hash;
+        
+        // Store the intended route in sessionStorage
+        // React Router will pick this up and navigate to it
+        if (route && route !== '/') {
+          sessionStorage.setItem('githubPages404Redirect', route + search + hash);
+        }
+        
+        // Redirect to index.html
+        window.location.replace(base + 'index.html');
+      })();
+    </script>
+  </head>
+  <body>
+    <p>Redirecting...</p>
+  </body>
+</html>

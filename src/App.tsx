@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './hooks/useAuth';
 import Layout from './components/Layout';
@@ -12,6 +13,23 @@ const BASE_PATH = import.meta.env.BASE_URL || '/sam-fit/';
 const BASENAME = BASE_PATH.endsWith('/') ? BASE_PATH.slice(0, -1) : BASE_PATH;
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+
+// Component to handle 404 redirects from GitHub Pages
+function RedirectHandler() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check if we have a stored redirect from 404.html
+    const storedRoute = sessionStorage.getItem('githubPages404Redirect');
+    if (storedRoute) {
+      sessionStorage.removeItem('githubPages404Redirect');
+      // Navigate to the stored route
+      navigate(storedRoute, { replace: true });
+    }
+  }, [navigate]);
+
+  return null;
+}
 
 function App() {
   if (!GOOGLE_CLIENT_ID) {
@@ -36,6 +54,7 @@ function App() {
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <AuthProvider>
         <BrowserRouter basename={BASENAME}>
+          <RedirectHandler />
           <Layout>
             <Routes>
               <Route path="/" element={<HomePage />} />
