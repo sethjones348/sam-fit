@@ -9,11 +9,22 @@
       // Redirects to index.html and preserves the route
       (function() {
         var path = window.location.pathname;
-        var base = '/sam-fit/';
         
-        // Extract the route after the base path
-        // e.g., /sam-fit/workouts -> /workouts
-        var route = path.replace(base, '');
+        // Determine base path - check if we're on GitHub Pages subdirectory
+        var base = '/';
+        var route = path;
+        
+        if (path.startsWith('/sam-fit/')) {
+          base = '/sam-fit/';
+          route = path.replace(base, '');
+        } else if (path.startsWith('/sam-fit')) {
+          base = '/sam-fit/';
+          route = '/';
+        } else {
+          // Custom domain or root - use path as-is
+          route = path;
+        }
+        
         if (!route.startsWith('/')) {
           route = '/' + route;
         }

@@ -9,9 +9,19 @@ import UploadPage from './pages/UploadPage';
 import WorkoutDetailPage from './pages/WorkoutDetailPage';
 import EditWorkoutPage from './pages/EditWorkoutPage';
 
-// Get base path from Vite config (for GitHub Pages)
-const BASE_PATH = import.meta.env.BASE_URL || '/sam-fit/';
-const BASENAME = BASE_PATH.endsWith('/') ? BASE_PATH.slice(0, -1) : BASE_PATH;
+// Dynamically determine base path based on current location
+// If we're on GitHub Pages subdirectory, use that; otherwise use root
+function getBasePath(): string {
+  const pathname = window.location.pathname;
+  // Check if we're on GitHub Pages subdirectory
+  if (pathname.startsWith('/sam-fit/')) {
+    return '/sam-fit';
+  }
+  // For custom domain or localhost, use root
+  return '';
+}
+
+const BASENAME = getBasePath();
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
