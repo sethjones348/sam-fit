@@ -1,0 +1,73 @@
+**Speaker 1:** I write down my workouts on a whiteboard everyday and mark my time at the end. I take a picture and put it into a folder. It would be awesome if I had an app or website that I could upload these pictures and it would log my workout, the movements, and the time. I could search my past workouts by movement
+
+**Speaker 2:** Hey. Okay, so some of these pictures are like the kinds of workouts and some of them are like—
+
+**Speaker 1:** That’s just the first one, ignore that. Just focus on the ones that are just pictures of whiteboards.
+
+**Speaker 2:** Okay. That makes way more sense. I was really confused what I was doing here. Okay, so or if not whiteboard on your—on your notes?
+
+**Speaker 1:** Sometimes I did on my notes, but I—that’s the whole reason why I want the app, because it takes forever to just type the thing out. And if it’s already on the whiteboard, I just take a picture of it and it’s easier.
+
+**Speaker 2:** So you want it to parse—you basically want it to parse out everything you wrote on the whiteboard into like a—a readable workout log or something, right?
+
+**Speaker 1:** Yeah, like a database basically, that I can go back and search later. Because like, sometimes I’ll be thinking—like I want to repeat workouts later to see if I’ve improved. Or I’ll be like, “Hey, I want to work out this specific exercise,” like and I want to do a workout that I’ve done before. And I want to go back, so it’d be cool to like search past workouts.
+
+**Speaker 2:** Yeah. So you could upload the picture and then like, if it pre-populated like a modal or something and you could correct any information it got wrong, that would probably be easier than typing it all out, right?
+
+**Speaker 1:** Yeah. Well, first of all, it has to like interpret the type of workout and then make like an input form for that workout and then populate the data and then show it to me, and then I’ll be like, “Yes, this is right.”
+
+**Speaker 2:** Is there like a standard format of the—like not format in terms of what you’re writing down, but like different workouts would have different information you’re capturing?
+
+**Speaker 1:** Yeah, there’s like three or four different types of workouts and then there’s—there’s like a handful of different, I guess formats that you would expect to write them down in.
+
+**Speaker 2:** But is there key information that you’d want to capture that’s different based on the workout?
+
+**Speaker 1:** Yeah, so like if it’s a work—if it’s like a workout with like multiple rounds, a lot of times you—you want to write down like what your time was for each round. And then if it’s like a workout for reps, then you want to write down the total number of reps that you got.
+
+**Speaker 2:** Yeah.
+
+**Speaker 1:** Those are pretty much the two main types are for time and for reps.
+
+**Speaker 2:** Okay.
+
+**Speaker 1:** Gotchu. But it could be like, broken down into rounds. So like sometimes it’s like how many reps you got in the rounds. So like, it would have to—like on the photo, it’ll be like “five rounds” at the top and then it’ll be like “these movements.” Yeah. So then the—the app needs to be able to like interpret—has to have like AI in the app or something like that, I don’t know. Interpret the—the photo that, “Okay, there’s five rounds, so I need five input lines for each round and it’s for time, so then it has to have a time field.”
+
+**Speaker 2:** Yeah, it makes sense.
+
+**Speaker 1:** That’s probably the hardest part of the app.
+
+**Speaker 2:** Yeah, I think that normally like, when you have data that you can like search, it’s like structured. So it would be like—if we were trying to make this as legit as possible, I would like have you write down all the different types of workouts and like the information that’s captured in each, and then I would create like a different kind of data model for each one, but maybe they share certain fields or something like that, which I don’t think we have to do any of that. Um, the easiest thing, well probably like the MVP of the product would be like, just taking a picture, uploading it and it parses out the information and gives an input modal and then you click save, and then it saves it to like a—to like a workout log.
+
+**Speaker 1:** Yeah. If it could just like create an object that has all the lines of text in it. So it could be like, and then save that as like “workout,” I don’t know, whatever the date is or whatever the movements—I don’t know, you could name it whatever. But like MVP could be there’s a database object and it just has like—ten—six lines of six strings of text in it and it’s just whatever I wrote on the board.
+
+**Speaker 2:** Yeah.
+
+**Speaker 1:** And then that could be searchable.
+
+**Speaker 2:** Yeah.
+
+**Speaker 1:** That would be cool.
+
+**Speaker 2:** Yeah. Well, that’d be—it’d be kind of fun. Uh, I’m—I have some ideas of how I could do the AI thing in—inside the app. I don’t know—I don’t think it would be that bad. Because what I can basically do is I can just like send the photo to like Gemini or—or OpenAI or something in an API call. And Gemini has like free—like, I mean has free API—APIs you can use. Especially since you’re going to be the only one using this thing, like it’s—it’s fine. So, cool. Alright man, thanks.
+
+**Speaker 1:** Yeah, thank you.
+
+**Speaker 2:** Oh, I re—recorded this conversation by the way.
+
+**Speaker 1:** You what?
+
+**Speaker 2:** I recorded this conversation. I’m obligated to let you know that.
+
+**Speaker 1:** That’s fine.
+
+**Speaker 2:** I’m going to send—I’ll—I can send you the transcription if you want.
+
+**Speaker 1:** Sure.
+
+**Speaker 2:** I’m just kidding. Alright, see ya bro.
+
+**Speaker 1:** Alright, see ya.
+
+**Speaker 2:** Yeah.
+
+Would you like me to summarize the technical requirements discussed for the workout app?
