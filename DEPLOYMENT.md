@@ -1,5 +1,33 @@
 # Deployment Guide - GitHub Pages
 
+## Quick Start
+
+1. **Push to GitHub**:
+   ```bash
+   git add .
+   git commit -m "Ready for deployment"
+   git push origin main
+   ```
+
+2. **Set GitHub Secrets** (Settings → Secrets → Actions):
+   - `VITE_GEMINI_API_KEY` - Your Gemini API key
+   - `VITE_GOOGLE_CLIENT_ID` - Your Google OAuth Client ID
+
+3. **Enable GitHub Pages**:
+   - Go to repository **Settings → Pages**
+   - **Source**: Select "GitHub Actions" (not "Deploy from a branch")
+
+4. **Update OAuth Settings**:
+   - Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+   - Add your GitHub Pages URL to authorized origins:
+     - `https://YOUR_USERNAME.github.io`
+   - Add to authorized redirect URIs:
+     - `https://YOUR_USERNAME.github.io`
+
+5. **Deploy**: Push to `main` branch triggers automatic deployment via GitHub Actions
+
+Your app will be live at: `https://YOUR_USERNAME.github.io/sam-fit/`
+
 ## Pre-Deployment Checklist
 
 ### 1. GitHub Repository Setup

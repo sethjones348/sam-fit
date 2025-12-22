@@ -7,6 +7,10 @@ import WorkoutsPage from './pages/WorkoutsPage';
 import UploadPage from './pages/UploadPage';
 import WorkoutDetailPage from './pages/WorkoutDetailPage';
 
+// Get base path from Vite config (for GitHub Pages)
+const BASE_PATH = import.meta.env.BASE_URL || '/sam-fit/';
+const BASENAME = BASE_PATH.endsWith('/') ? BASE_PATH.slice(0, -1) : BASE_PATH;
+
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 function App() {
@@ -15,8 +19,13 @@ function App() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Configuration Error</h1>
-          <p className="text-gray-600">
-            Please set VITE_GOOGLE_CLIENT_ID in your .env.local file
+          <p className="text-gray-600 mb-2">
+            VITE_GOOGLE_CLIENT_ID is not configured.
+          </p>
+          <p className="text-sm text-gray-500">
+            {import.meta.env.MODE === 'development' 
+              ? 'Please set VITE_GOOGLE_CLIENT_ID in your .env.local file'
+              : 'Please ensure VITE_GOOGLE_CLIENT_ID is set in GitHub Secrets and the workflow has access to the github-pages environment'}
           </p>
         </div>
       </div>
@@ -26,7 +35,7 @@ function App() {
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <AuthProvider>
-        <BrowserRouter basename="/sam-fit">
+        <BrowserRouter basename={BASENAME}>
           <Layout>
             <Routes>
               <Route path="/" element={<HomePage />} />
