@@ -7,7 +7,7 @@ import { supabaseStorage } from '../services/supabaseStorage';
 import FeedWorkoutCard from '../components/FeedWorkoutCard';
 
 export default function FeedPage() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, login } = useAuth();
   const [workouts, setWorkouts] = useState<FeedWorkout[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,10 +54,21 @@ export default function FeedPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center pt-20">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Please Sign In</h1>
-          <p className="text-gray-600">You need to be signed in to view your feed.</p>
+      <div className="min-h-screen flex items-center justify-center pt-20 px-4">
+        <div className="text-center max-w-md">
+          <div className="w-24 h-24 bg-gradient-to-br from-cf-red to-cf-red-hover rounded-full flex items-center justify-center mx-auto mb-6">
+            <span className="text-4xl">💪</span>
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-heading font-bold mb-4">Welcome to SamFit</h1>
+          <p className="text-gray-600 mb-8 text-lg">
+            Track your workouts, connect with friends, and stay motivated. Sign in to get started.
+          </p>
+          <button
+            onClick={login}
+            className="bg-cf-red text-white px-8 py-3 rounded font-semibold uppercase tracking-wider hover:bg-cf-red-hover transition-all text-lg min-h-[56px]"
+          >
+            Sign In with Google
+          </button>
         </div>
       </div>
     );
