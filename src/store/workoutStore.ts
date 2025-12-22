@@ -10,6 +10,7 @@ interface WorkoutStore {
   error: string | null;
   loadWorkouts: () => Promise<void>;
   saveWorkout: (extraction: WorkoutExtraction & { imageUrl: string }) => Promise<void>;
+  updateWorkout: (id: string, extraction: WorkoutExtraction & { imageUrl: string }) => Promise<void>;
   deleteWorkout: (id: string) => Promise<void>;
   syncFromDrive: () => Promise<void>;
 }
@@ -110,6 +111,61 @@ export const workoutStore = create<WorkoutStore>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to save workout',
+        isLoading: false,
+      });
+      throw error;
+    }
+  },
+
+  updateWorkout: async (id, extraction) => {
+    set({ isLoading: true, error: null });
+    try {
+      const existingWorkout = get().workouts.find((w) => w.id === id);
+      if (!existingWorkout) {
+        throw new Error('Workout not found');
+      }
+
+      // Generate default name if not provided
+      const generateDefaultName = (): string => {
+        if (extraction.rawText && extraction.rawText.length > 0 && extraction.rawText[0].trim()) {
+          return extraction.rawText[0].trim();
+        }
+        const rounds = extraction.rounds || 0;
+        const type = extraction.type === 'unknown' ? 'Workout' : extraction.type.charAt(0).toUpperCase() + extraction.type.slice(1);
+        return rounds > 0 ? `${rounds}-${type} Workout` : `${type} Workout`;
+      };
+
+      const updatedWorkout: Workout = {
+        ...existingWorkout,
+        name: extraction.name?.trim() || generateDefaultName(),
+        rawText: extraction.rawText,
+        extractedData: {
+          type: extraction.type,
+          rounds: extraction.rounds,
+          movements: extraction.movements,
+          times: extraction.times,
+          reps: extraction.reps,
+        },
+        imageUrl: extraction.imageUrl,
+        metadata: {
+          ...existingWorkout.metadata,
+          confidence: extraction.confidence,
+        },
+      };
+
+      // Update in both Drive and cache
+      await Promise.all([
+        driveStorage.saveWorkout(updatedWorkout),
+        workoutCache.saveWorkout(updatedWorkout),
+      ]);
+
+      set((state) => ({
+        workouts: state.workouts.map((w) => (w.id === id ? updatedWorkout : w)),
+        isLoading: false,
+      }));
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to update workout',
         isLoading: false,
       });
       throw error;

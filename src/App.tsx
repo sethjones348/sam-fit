@@ -7,6 +7,7 @@ import HomePage from './pages/HomePage';
 import WorkoutsPage from './pages/WorkoutsPage';
 import UploadPage from './pages/UploadPage';
 import WorkoutDetailPage from './pages/WorkoutDetailPage';
+import EditWorkoutPage from './pages/EditWorkoutPage';
 
 // Get base path from Vite config (for GitHub Pages)
 const BASE_PATH = import.meta.env.BASE_URL || '/sam-fit/';
@@ -61,6 +62,7 @@ function App() {
               <Route path="/workouts" element={<WorkoutsPage />} />
               <Route path="/upload" element={<UploadPage />} />
               <Route path="/workout/:id" element={<WorkoutDetailPage />} />
+              <Route path="/workout/:id/edit" element={<EditWorkoutPage />} />
             </Routes>
           </Layout>
         </BrowserRouter>

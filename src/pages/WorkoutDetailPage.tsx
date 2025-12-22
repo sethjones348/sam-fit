@@ -78,12 +78,20 @@ export default function WorkoutDetailPage() {
                 {format(new Date(workout.date), 'MMMM d, yyyy')}
               </p>
             </div>
-            <button
-              onClick={handleDelete}
-              className="text-red-600 hover:text-red-800 text-sm font-semibold px-3 py-2 min-h-[44px] flex items-center"
-            >
-              Delete
-            </button>
+            <div className="flex gap-2">
+              <Link
+                to={`/workout/${workout.id}/edit`}
+                className="bg-cf-red text-white px-4 py-2 rounded font-semibold uppercase tracking-wider hover:bg-cf-red-hover transition-all text-sm min-h-[44px] flex items-center"
+              >
+                Edit
+              </Link>
+              <button
+                onClick={handleDelete}
+                className="text-red-600 hover:text-red-800 text-sm font-semibold px-3 py-2 min-h-[44px] flex items-center"
+              >
+                Delete
+              </button>
+            </div>
                     </div>
 
                     {workout.imageUrl && (
