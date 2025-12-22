@@ -214,6 +214,62 @@ export const supabaseStorage = {
         return workouts;
     },
 
+    async getWorkoutById(workoutId: string): Promise<Workout | null> {
+        // Fetch workout by ID - RLS will handle permissions
+        const { data, error } = await supabase
+            .from('workouts')
+            .select('*')
+            .eq('id', workoutId)
+            .single();
+
+        if (error) {
+            if (error.code === 'PGRST116') {
+                // No rows returned
+                return null;
+            }
+            throw new Error(`Failed to load workout: ${error.message}`);
+        }
+
+        if (!data) {
+            return null;
+        }
+
+        // Transform Supabase data to Workout format
+        const workout: Workout = {
+            id: data.id,
+            name: data.name || undefined,
+            date: data.date,
+            rawText: data.raw_text || [],
+            extractedData: {
+                type: data.workout_type || 'unknown',
+                rounds: data.rounds,
+                movements: data.movements || [],
+                times: data.times || null,
+                reps: data.reps || null,
+            },
+            imageUrl: data.image_url || '',
+            metadata: {
+                confidence: data.confidence || undefined,
+            },
+            userId: data.user_id,
+        };
+
+        // Generate default name for workouts that don't have one
+        if (!workout.name) {
+            if (workout.rawText && workout.rawText.length > 0 && workout.rawText[0].trim()) {
+                workout.name = workout.rawText[0].trim();
+            } else {
+                const rounds = workout.extractedData.rounds || 0;
+                const type = workout.extractedData.type === 'unknown'
+                    ? 'Workout'
+                    : workout.extractedData.type.charAt(0).toUpperCase() + workout.extractedData.type.slice(1);
+                workout.name = rounds > 0 ? `${rounds}-${type} Workout` : `${type} Workout`;
+            }
+        }
+
+        return workout;
+    },
+
     async deleteWorkout(workoutId: string): Promise<void> {
         // Get the workout to check for image
         const { data: workoutData, error: fetchError } = await supabase

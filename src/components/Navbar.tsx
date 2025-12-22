@@ -70,15 +70,6 @@ export default function Navbar() {
                         >
                             Friends
                         </Link>
-                        <Link
-                            to="/feed"
-                            className={`text-sm font-semibold uppercase tracking-wider transition-colors ${isActive('/feed')
-                                ? 'text-cf-red'
-                                : 'text-black hover:text-cf-red'
-                                }`}
-                        >
-                            Feed
-                        </Link>
                     </div>
 
                     {/* Mobile Menu Button */}
@@ -118,12 +109,18 @@ export default function Navbar() {
                                     to="/profile"
                                     className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
                                 >
-                                    {user.picture && (
+                                    {user.picture ? (
                                         <img
                                             src={user.picture}
                                             alt={user.name}
-                                            className="w-10 h-10 rounded-full"
+                                            className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
                                         />
+                                    ) : (
+                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cf-red to-cf-red-hover flex items-center justify-center border-2 border-gray-200">
+                                            <span className="text-white text-sm font-bold">
+                                                {user.name?.[0]?.toUpperCase() || '?'}
+                                            </span>
+                                        </div>
                                     )}
                                 </Link>
                                 <button
@@ -183,16 +180,6 @@ export default function Navbar() {
                             >
                                 Friends
                             </Link>
-                            <Link
-                                to="/feed"
-                                onClick={() => setMobileMenuOpen(false)}
-                                className={`px-4 py-2 text-sm font-semibold uppercase tracking-wider transition-colors ${isActive('/feed')
-                                    ? 'text-cf-red'
-                                    : 'text-black hover:text-cf-red'
-                                    }`}
-                            >
-                                Feed
-                            </Link>
                             {isAuthenticated && user && (
                                 <div className="px-4 py-2 border-t border-gray-200 mt-2">
                                     <Link
@@ -200,12 +187,18 @@ export default function Navbar() {
                                         onClick={() => setMobileMenuOpen(false)}
                                         className="flex items-center space-x-3 mb-3 hover:opacity-80 transition-opacity"
                                     >
-                                        {user.picture && (
+                                        {user.picture ? (
                                             <img
                                                 src={user.picture}
                                                 alt={user.name}
-                                                className="w-10 h-10 rounded-full"
+                                                className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
                                             />
+                                        ) : (
+                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cf-red to-cf-red-hover flex items-center justify-center border-2 border-gray-200">
+                                                <span className="text-white text-sm font-bold">
+                                                    {user.name?.[0]?.toUpperCase() || '?'}
+                                                </span>
+                                            </div>
                                         )}
                                         <span className="text-sm font-semibold">{user.name}</span>
                                     </Link>

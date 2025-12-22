@@ -98,11 +98,49 @@ export default function UploadPage() {
                 )}
 
                 {!extraction ? (
-                    <ImageUpload
-                        onUpload={handleImageUpload}
-                        isLoading={isExtracting}
-                        uploadedImage={uploadedImage}
-                    />
+                    <>
+                        {/* Instructions Section */}
+                        <div className="bg-white border border-gray-200 rounded-lg shadow-md p-6 mb-8">
+                            <h2 className="text-2xl font-heading font-bold mb-4 text-center">
+                                How It Works
+                            </h2>
+                            <div className="grid md:grid-cols-3 gap-6">
+                                <div className="text-center">
+                                    <div className="w-16 h-16 bg-cf-red rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <span className="text-2xl">📸</span>
+                                    </div>
+                                    <h3 className="text-xl font-heading font-bold mb-2">1. Upload Photo</h3>
+                                    <p className="text-gray-600 text-sm">
+                                        Take a picture of your whiteboard workout and upload it to the app.
+                                    </p>
+                                </div>
+                                <div className="text-center">
+                                    <div className="w-16 h-16 bg-cf-red rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <span className="text-2xl">🤖</span>
+                                    </div>
+                                    <h3 className="text-xl font-heading font-bold mb-2">2. AI Extraction</h3>
+                                    <p className="text-gray-600 text-sm">
+                                        Our AI automatically extracts movements, rounds, times, and reps from your photo.
+                                    </p>
+                                </div>
+                                <div className="text-center">
+                                    <div className="w-16 h-16 bg-cf-red rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <span className="text-2xl">📊</span>
+                                    </div>
+                                    <h3 className="text-xl font-heading font-bold mb-2">3. Review & Save</h3>
+                                    <p className="text-gray-600 text-sm">
+                                        Review the extracted data, edit if needed, and save. Your workout will appear in your feed.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <ImageUpload
+                            onUpload={handleImageUpload}
+                            isLoading={isExtracting}
+                            uploadedImage={uploadedImage}
+                        />
+                    </>
                 ) : (
                     <WorkoutEditor
                         extraction={extraction}

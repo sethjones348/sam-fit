@@ -24,10 +24,36 @@ export default function FriendsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Load all counts on mount to show accurate tab counts
   useEffect(() => {
     if (!isAuthenticated) return;
-    loadData();
+    loadAllCounts();
+  }, [isAuthenticated]);
+
+  // Load data for the active tab when it changes
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (activeTab !== 'invite') {
+      loadData();
+    }
   }, [isAuthenticated, activeTab]);
+
+  // Load all counts in parallel to populate tab badges
+  const loadAllCounts = async () => {
+    try {
+      const [pending, sent, followingData] = await Promise.all([
+        getPendingFriendRequests(),
+        getSentFriendRequests(),
+        getFollowing(),
+      ]);
+      setPendingRequests(pending || []);
+      setSentRequests(sent || []);
+      setFollowing(followingData || []);
+    } catch (err) {
+      // Silently fail for counts - don't show error, just leave arrays empty
+      console.error('Failed to load friend counts:', err);
+    }
+  };
 
   const loadData = async () => {
     // For invite tab, no data to load
@@ -74,6 +100,8 @@ export default function FriendsPage() {
       await sendFriendRequest(email);
       setEmail('');
       alert('Friend request sent!');
+      // Refresh all counts to update tab badges
+      await loadAllCounts();
       // Refresh sent requests if on that tab
       if (activeTab === 'sent') {
         loadData();
@@ -88,7 +116,8 @@ export default function FriendsPage() {
   const handleAccept = async (requestId: string) => {
     try {
       await acceptFriendRequest(requestId);
-      await loadData();
+      await loadAllCounts(); // Update all counts
+      await loadData(); // Refresh current tab data
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to accept friend request');
     }
@@ -97,7 +126,8 @@ export default function FriendsPage() {
   const handleDecline = async (requestId: string) => {
     try {
       await declineFriendRequest(requestId);
-      await loadData();
+      await loadAllCounts(); // Update all counts
+      await loadData(); // Refresh current tab data
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to decline friend request');
     }
@@ -107,7 +137,8 @@ export default function FriendsPage() {
     if (!confirm('Are you sure you want to unfollow this user?')) return;
     try {
       await unfollowUser(followingId);
-      await loadData();
+      await loadAllCounts(); // Update all counts
+      await loadData(); // Refresh current tab data
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to unfollow user');
     }
@@ -230,12 +261,18 @@ export default function FriendsPage() {
                     className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
                   >
                     <div className="flex items-center space-x-4">
-                      {request.fromUser?.picture && (
+                      {request.fromUser?.picture ? (
                         <img
                           src={request.fromUser.picture}
                           alt={request.fromUser.name}
-                          className="w-12 h-12 rounded-full"
+                          className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
                         />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cf-red to-cf-red-hover flex items-center justify-center border-2 border-gray-200">
+                          <span className="text-white text-sm font-bold">
+                            {request.fromUser?.name?.[0]?.toUpperCase() || '?'}
+                          </span>
+                        </div>
                       )}
                       <div>
                         <p className="font-semibold">{request.fromUser?.name || request.fromUser?.email || 'Unknown User'}</p>
@@ -282,12 +319,18 @@ export default function FriendsPage() {
                     className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
                   >
                     <div className="flex items-center space-x-4">
-                      {request.toUser?.picture && (
+                      {request.toUser?.picture ? (
                         <img
                           src={request.toUser.picture}
                           alt={request.toUser.name}
-                          className="w-12 h-12 rounded-full"
+                          className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
                         />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cf-red to-cf-red-hover flex items-center justify-center border-2 border-gray-200">
+                          <span className="text-white text-sm font-bold">
+                            {request.toUser?.name?.[0]?.toUpperCase() || request.toEmail?.[0]?.toUpperCase() || '?'}
+                          </span>
+                        </div>
                       )}
                       <div>
                         <p className="font-semibold">{request.toUser?.name || request.toEmail}</p>
@@ -329,12 +372,18 @@ export default function FriendsPage() {
                     className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
                   >
                     <div className="flex items-center space-x-4">
-                      {follow.following?.picture && (
+                      {follow.following?.picture ? (
                         <img
                           src={follow.following.picture}
                           alt={follow.following.name}
-                          className="w-12 h-12 rounded-full"
+                          className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
                         />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cf-red to-cf-red-hover flex items-center justify-center border-2 border-gray-200">
+                          <span className="text-white text-sm font-bold">
+                            {follow.following?.name?.[0]?.toUpperCase() || '?'}
+                          </span>
+                        </div>
                       )}
                       <div>
                         <Link

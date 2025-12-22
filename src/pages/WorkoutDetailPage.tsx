@@ -3,21 +3,56 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Workout } from '../types';
 import { workoutStore } from '../store/workoutStore';
+import { supabaseStorage } from '../services/supabaseStorage';
 import { format } from 'date-fns';
+import FistBumpButton from '../components/FistBumpButton';
+import CommentsSection from '../components/CommentsSection';
 
 export default function WorkoutDetailPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user } = useAuth();
     const { workouts, deleteWorkout } = workoutStore();
     const [workout, setWorkout] = useState<Workout | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isOwnWorkout, setIsOwnWorkout] = useState(false);
 
     useEffect(() => {
-        if (id) {
-            const found = workouts.find((w) => w.id === id);
-            setWorkout(found || null);
+        if (!id || !isAuthenticated) {
+            setIsLoading(false);
+            return;
         }
-    }, [id, workouts]);
+
+        const loadWorkout = async () => {
+            setIsLoading(true);
+            try {
+                // First check local store
+                const found = workouts.find((w) => w.id === id);
+                if (found) {
+                    setWorkout(found);
+                    setIsOwnWorkout(found.userId === user?.id);
+                    setIsLoading(false);
+                    return;
+                }
+
+                // If not found locally, fetch from Supabase
+                const fetchedWorkout = await supabaseStorage.getWorkoutById(id);
+                if (fetchedWorkout) {
+                    setWorkout(fetchedWorkout);
+                    setIsOwnWorkout(fetchedWorkout.userId === user?.id);
+                } else {
+                    setWorkout(null);
+                }
+            } catch (error) {
+                console.error('Failed to load workout:', error);
+                setWorkout(null);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadWorkout();
+    }, [id, isAuthenticated, workouts, user?.id]);
 
     const handleDelete = async () => {
         if (!workout || !confirm('Are you sure you want to delete this workout?')) {
@@ -43,13 +78,25 @@ export default function WorkoutDetailPage() {
         );
     }
 
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center pt-20">
+                <div className="text-center">
+                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-cf-red mb-4"></div>
+                    <p className="text-lg text-gray-600">Loading workout...</p>
+                </div>
+            </div>
+        );
+    }
+
     if (!workout) {
         return (
             <div className="min-h-screen flex items-center justify-center pt-20">
                 <div className="text-center">
                     <h1 className="text-2xl font-bold mb-4">Workout Not Found</h1>
-                    <Link to="/workouts" className="text-cf-red hover:underline">
-                        Back to Workouts
+                    <p className="text-gray-600 mb-4">The workout you're looking for doesn't exist or you don't have permission to view it.</p>
+                    <Link to="/feed" className="text-cf-red hover:underline">
+                        Back to Feed
                     </Link>
                 </div>
             </div>
@@ -78,19 +125,24 @@ export default function WorkoutDetailPage() {
                 {format(new Date(workout.date), 'MMMM d, yyyy')}
               </p>
             </div>
-            <div className="flex gap-2">
-              <Link
-                to={`/workout/${workout.id}/edit`}
-                className="bg-cf-red text-white px-4 py-2 rounded font-semibold uppercase tracking-wider hover:bg-cf-red-hover transition-all text-sm min-h-[44px] flex items-center"
-              >
-                Edit
-              </Link>
-              <button
-                onClick={handleDelete}
-                className="text-red-600 hover:text-red-800 text-sm font-semibold px-3 py-2 min-h-[44px] flex items-center"
-              >
-                Delete
-              </button>
+            <div className="flex gap-2 items-center">
+              <FistBumpButton workoutId={workout.id} />
+              {isOwnWorkout && (
+                <>
+                  <Link
+                    to={`/workout/${workout.id}/edit`}
+                    className="bg-cf-red text-white px-4 py-2 rounded font-semibold uppercase tracking-wider hover:bg-cf-red-hover transition-all text-sm min-h-[44px] flex items-center"
+                  >
+                    Edit
+                  </Link>
+                  <button
+                    onClick={handleDelete}
+                    className="text-red-600 hover:text-red-800 text-sm font-semibold px-3 py-2 min-h-[44px] flex items-center"
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
             </div>
                     </div>
 
@@ -165,6 +217,9 @@ export default function WorkoutDetailPage() {
                             </div>
                         </div>
                     </div>
+                    
+                    {/* Comments Section */}
+                    <CommentsSection workoutId={workout.id} />
                 </div>
             </div>
         </div>

@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { AuthProvider } from './hooks/useAuth';
 import Layout from './components/Layout';
-import HomePage from './pages/HomePage';
 import WorkoutsPage from './pages/WorkoutsPage';
 import UploadPage from './pages/UploadPage';
 import WorkoutDetailPage from './pages/WorkoutDetailPage';
@@ -49,7 +48,7 @@ function App() {
         <RedirectHandler />
         <Layout>
             <Routes>
-              <Route path="/" element={<HomePage />} />
+              <Route path="/" element={<FeedPage />} />
               <Route path="/workouts" element={<WorkoutsPage />} />
               <Route path="/upload" element={<UploadPage />} />
               <Route path="/workout/:id" element={<WorkoutDetailPage />} />
@@ -57,7 +56,6 @@ function App() {
               <Route path="/profile/:id" element={<ProfilePage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/friends" element={<FriendsPage />} />
-              <Route path="/feed" element={<FeedPage />} />
             </Routes>
         </Layout>
       </BrowserRouter>

@@ -110,12 +110,18 @@ export default function ProfilePage() {
         <div className="bg-white border border-gray-200 rounded-lg shadow-md p-6">
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-4">
-              {profile.picture && (
+              {profile.picture ? (
                 <img
                   src={profile.picture}
                   alt={profile.name}
-                  className="w-20 h-20 rounded-full"
+                  className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
                 />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cf-red to-cf-red-hover flex items-center justify-center border-2 border-gray-200">
+                  <span className="text-white text-2xl font-bold">
+                    {profile.name?.[0]?.toUpperCase() || '?'}
+                  </span>
+                </div>
               )}
               <div>
                 {isEditing && isOwnProfile ? (
