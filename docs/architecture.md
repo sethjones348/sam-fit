@@ -113,8 +113,10 @@ This hybrid approach gives:
 **Implementation**:
 - Use Gemini Pro Vision model
 - Send image as base64 or file reference
-- Prompt: Extract workout information, identify workout type (time-based vs reps-based), extract rounds, movements, times/reps
+- Prompt: See `docs/gemini-prompt-design.md` for detailed prompt templates
+- Hybrid approach: Extract raw text (always) + structured data (when possible)
 - Return structured JSON that can be validated/edited by user
+- Handle graceful fallback if structured extraction fails (rawText always available)
 
 **API Flow**:
 1. User uploads image

@@ -3,6 +3,11 @@
 ## Overview
 This document tracks the implementation progress of the SamFit workout logging application. Tasks are organized by phase and can be marked as complete as work progresses.
 
+## Related Documentation
+- **Architecture**: `docs/architecture.md` - System architecture and technology decisions
+- **Style Guide**: `docs/style-guide.md` - CrossFit-inspired design system and UI components
+- **Prompt Design**: `docs/gemini-prompt-design.md` - Gemini API prompts and extraction logic
+
 **Status Legend:**
 - ⬜ Not Started
 - 🟡 In Progress
@@ -150,13 +155,16 @@ This document tracks the implementation progress of the SamFit workout logging a
 ## Phase 3: AI/OCR Integration (Gemini API)
 **Goal**: Extract text and structured data from workout images
 
+**📋 Reference**: See `docs/gemini-prompt-design.md` for detailed prompt templates and implementation examples.
+
 ### 3.1 Gemini API Integration
 - ⬜ Set up Gemini API client
 - ⬜ Create `WorkoutExtractor` service
 - ⬜ Implement image upload (base64 conversion)
-- ⬜ Create prompt template for workout extraction
+- ⬜ Implement prompt template (use hybrid prompt from `gemini-prompt-design.md`)
 - ⬜ Implement API call with error handling
-- ⬜ Parse Gemini response into structured data
+- ⬜ Parse Gemini response into structured data (handle markdown-wrapped JSON)
+- ⬜ Implement fallback handling (rawText always available)
 
 ### 3.2 Image Processing
 - ⬜ Create image upload component
@@ -168,13 +176,14 @@ This document tracks the implementation progress of the SamFit workout logging a
 - ⬜ Display image preview
 
 ### 3.3 Data Extraction & Parsing
-- ⬜ Extract raw text lines from image
-- ⬜ Identify workout type (time-based vs reps-based)
+- ⬜ Extract raw text lines from image (required - always succeeds)
+- ⬜ Identify workout type (time-based vs reps-based) - see prompt design doc
 - ⬜ Extract rounds information
 - ⬜ Extract movements/exercises
-- ⬜ Extract times (if time-based)
+- ⬜ Extract times (if time-based, convert MM:SS to seconds)
 - ⬜ Extract reps (if reps-based)
 - ⬜ Handle edge cases and errors
+- ⬜ Implement confidence scoring
 
 ### 3.4 Extraction UI Components
 - ⬜ Create `ImageUpload` component
