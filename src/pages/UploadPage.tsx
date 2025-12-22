@@ -6,6 +6,7 @@ import WorkoutEditor from '../components/WorkoutEditor';
 import { WorkoutExtraction } from '../types';
 import { workoutExtractor } from '../services/workoutExtractor';
 import { workoutStore } from '../store/workoutStore';
+import { compressImage } from '../utils/imageCompression';
 
 export default function UploadPage() {
     const { isAuthenticated } = useAuth();
@@ -17,14 +18,18 @@ export default function UploadPage() {
     const [error, setError] = useState<string | null>(null);
     const { saveWorkout } = workoutStore();
 
-    const handleImageUpload = async (imageBase64: string) => {
+    const handleImageUpload = async (imageBase64: string, dateTaken?: string) => {
         setUploadedImage(imageBase64);
         setError(null);
         setIsExtracting(true);
 
         try {
             const result = await workoutExtractor.extract(imageBase64);
-            setExtraction(result);
+            // Set date from EXIF if available, otherwise use current date
+            setExtraction({
+                ...result,
+                date: dateTaken || new Date().toISOString(),
+            });
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to extract workout data');
             console.error('Extraction error:', err);
@@ -37,9 +42,21 @@ export default function UploadPage() {
         setIsSaving(true);
         setError(null);
         try {
+            // Compress image before saving to reduce storage
+            let compressedImage = uploadedImage || '';
+            if (uploadedImage) {
+                try {
+                    compressedImage = await compressImage(uploadedImage, 1920, 0.8);
+                    console.log('Image compressed for storage');
+                } catch (compressErr) {
+                    console.warn('Failed to compress image, using original:', compressErr);
+                    // Continue with original image if compression fails
+                }
+            }
+            
             await saveWorkout({
                 ...workoutData,
-                imageUrl: uploadedImage || '',
+                imageUrl: compressedImage,
             });
             navigate('/workouts');
         } catch (err) {

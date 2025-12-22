@@ -5,6 +5,7 @@ import { Workout, WorkoutExtraction } from '../types';
 import { workoutStore } from '../store/workoutStore';
 import WorkoutEditor from '../components/WorkoutEditor';
 import { Link } from 'react-router-dom';
+import { compressImage } from '../utils/imageCompression';
 
 export default function EditWorkoutPage() {
   const { id } = useParams<{ id: string }>();
@@ -26,9 +27,21 @@ export default function EditWorkoutPage() {
 
     setIsSaving(true);
     try {
+      // Compress image before saving if it's a base64 image
+      let compressedImage = workout.imageUrl;
+      if (workout.imageUrl && workout.imageUrl.startsWith('data:image')) {
+        try {
+          compressedImage = await compressImage(workout.imageUrl, 1920, 0.8);
+          console.log('Image compressed for storage');
+        } catch (compressErr) {
+          console.warn('Failed to compress image, using original:', compressErr);
+          // Continue with original image if compression fails
+        }
+      }
+      
       await updateWorkout(id, {
         ...extraction,
-        imageUrl: workout.imageUrl,
+        imageUrl: compressedImage,
       });
       navigate(`/workout/${id}`);
     } catch (error) {
@@ -73,6 +86,7 @@ export default function EditWorkoutPage() {
   // Convert Workout to WorkoutExtraction format
   const extraction: WorkoutExtraction = {
     name: workout.name,
+    date: workout.date,
     rawText: workout.rawText,
     type: workout.extractedData.type,
     rounds: workout.extractedData.rounds,

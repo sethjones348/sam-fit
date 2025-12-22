@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { WorkoutExtraction } from '../types';
+import { pluralizeMovement } from '../utils/movementUtils';
 
 interface WorkoutEditorProps {
   extraction: WorkoutExtraction;
@@ -20,16 +21,24 @@ export default function WorkoutEditor({
   const [movementInput, setMovementInput] = useState('');
   const [editingMovementIndex, setEditingMovementIndex] = useState<number | null>(null);
   const [editingMovementValue, setEditingMovementValue] = useState('');
+  const [timeInputValue, setTimeInputValue] = useState('');
 
   useEffect(() => {
     setFormData(extraction);
+    // Initialize time input value when extraction changes
+    if (extraction.date) {
+      setTimeInputValue(formatTime12Hour(extraction.date));
+    }
   }, [extraction]);
 
   const handleAddMovement = () => {
     if (movementInput.trim()) {
+      const movement = movementInput.trim();
+      // Pluralize if it starts with a number
+      const pluralizedMovement = pluralizeMovement(movement);
       setFormData({
         ...formData,
-        movements: [...formData.movements, movementInput.trim()],
+        movements: [...formData.movements, pluralizedMovement],
       });
       setMovementInput('');
     }
@@ -49,8 +58,11 @@ export default function WorkoutEditor({
 
   const handleSaveEditMovement = (index: number) => {
     if (editingMovementValue.trim()) {
+      const movement = editingMovementValue.trim();
+      // Pluralize if it starts with a number
+      const pluralizedMovement = pluralizeMovement(movement);
       const newMovements = [...formData.movements];
-      newMovements[index] = editingMovementValue.trim();
+      newMovements[index] = pluralizedMovement;
       setFormData({
         ...formData,
         movements: newMovements,
@@ -121,6 +133,59 @@ export default function WorkoutEditor({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Convert ISO string to local date string (YYYY-MM-DD)
+  const getLocalDateString = (isoString: string): string => {
+    const date = new Date(isoString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Convert ISO string to local time string (HH:MM in 24-hour format)
+  const getLocalTimeString = (isoString: string): string => {
+    const date = new Date(isoString);
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
+  // Convert local date and time to ISO string
+  const localDateTimeToISO = (dateStr: string, timeStr: string): string => {
+    const date = new Date(`${dateStr}T${timeStr}`);
+    return date.toISOString();
+  };
+
+  // Format time as 12-hour with AM/PM
+  const formatTime12Hour = (isoString: string): string => {
+    const date = new Date(isoString);
+    let hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // 0 should be 12
+    const minutesStr = String(minutes).padStart(2, '0');
+    return `${hours}:${minutesStr} ${ampm}`;
+  };
+
+  // Parse 12-hour time string (hh:mm AM/PM) to 24-hour format (HH:MM)
+  const parse12HourTime = (time12Hour: string): string => {
+    const match = time12Hour.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (!match) return '12:00';
+    
+    let hours = parseInt(match[1], 10);
+    const minutes = match[2];
+    const ampm = match[3].toUpperCase();
+    
+    if (ampm === 'PM' && hours !== 12) {
+      hours += 12;
+    } else if (ampm === 'AM' && hours === 12) {
+      hours = 0;
+    }
+    
+    return `${String(hours).padStart(2, '0')}:${minutes}`;
+  };
+
   const generateDefaultName = (): string => {
     // Use first line of raw text, or fallback to rounds-type format
     if (formData.rawText && formData.rawText.length > 0 && formData.rawText[0].trim()) {
@@ -165,6 +230,83 @@ export default function WorkoutEditor({
           />
           <p className="text-xs text-gray-500 mt-1">
             Leave empty to use default: {generateDefaultName()}
+          </p>
+        </div>
+
+        {/* Date and Time */}
+        <div>
+          <label className="block text-sm font-semibold uppercase tracking-wider mb-2">
+            Date & Time
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Date</label>
+              <input
+                type="date"
+                value={formData.date ? getLocalDateString(formData.date) : ''}
+                onChange={(e) => {
+                  const dateValue = e.target.value;
+                  if (dateValue && formData.date) {
+                    // Preserve existing time, just update date
+                    const timeStr = getLocalTimeString(formData.date);
+                    const newISO = localDateTimeToISO(dateValue, timeStr);
+                    setFormData({
+                      ...formData,
+                      date: newISO,
+                    });
+                  } else if (dateValue) {
+                    // No existing date, use current time
+                    const now = new Date();
+                    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                    const newISO = localDateTimeToISO(dateValue, timeStr);
+                    setFormData({
+                      ...formData,
+                      date: newISO,
+                    });
+                  }
+                }}
+                className="w-full px-4 py-2 border-2 border-gray-200 rounded focus:border-cf-red outline-none min-h-[44px]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Time</label>
+              <input
+                type="text"
+                value={timeInputValue}
+                onChange={(e) => {
+                  const timeValue = e.target.value;
+                  // Always update the input value so user can type freely
+                  setTimeInputValue(timeValue);
+                  
+                  // If we have a complete valid format, update the formData date
+                  if (formData.date && timeValue && /^\d{1,2}:\d{2}\s*(AM|PM)$/i.test(timeValue)) {
+                    const dateStr = getLocalDateString(formData.date);
+                    const time24Hour = parse12HourTime(timeValue);
+                    const newISO = localDateTimeToISO(dateStr, time24Hour);
+                    setFormData({
+                      ...formData,
+                      date: newISO,
+                    });
+                  }
+                }}
+                onBlur={(e) => {
+                  // On blur, if the format is incomplete or invalid, revert to formatted time
+                  const timeValue = e.target.value;
+                  if (formData.date) {
+                    if (!timeValue || !/^\d{1,2}:\d{2}\s*(AM|PM)$/i.test(timeValue)) {
+                      // Invalid or empty format, revert to formatted time
+                      const formatted = formatTime12Hour(formData.date);
+                      setTimeInputValue(formatted);
+                    }
+                  }
+                }}
+                placeholder="hh:mm AM/PM"
+                className="w-full px-4 py-2 border-2 border-gray-200 rounded focus:border-cf-red outline-none min-h-[44px]"
+              />
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            Date and time from photo metadata or upload date/time
           </p>
         </div>
 
@@ -335,7 +477,7 @@ export default function WorkoutEditor({
         </div>
 
         {/* Times */}
-        {formData.type === 'time' && (
+        {(formData.type === 'time' || (formData.times && formData.times.length > 0)) && (
           <div>
             <label className="block text-sm font-semibold uppercase tracking-wider mb-2">
               Times (MM:SS)
@@ -385,7 +527,7 @@ export default function WorkoutEditor({
         )}
 
         {/* Reps */}
-        {formData.type === 'reps' && (
+        {(formData.type === 'reps' || (formData.reps && formData.reps.length > 0)) && (
           <div>
             <label className="block text-sm font-semibold uppercase tracking-wider mb-2">
               Reps
@@ -439,13 +581,22 @@ export default function WorkoutEditor({
           <label className="block text-sm font-semibold uppercase tracking-wider mb-2">
             Raw Text
           </label>
-          <div className="bg-gray-50 p-4 rounded border border-gray-200">
-            {formData.rawText.map((line, index) => (
-              <p key={index} className="text-gray-700 font-mono text-sm mb-1">
-                {line}
-              </p>
-            ))}
-          </div>
+          <textarea
+            value={formData.rawText.join('\n')}
+            onChange={(e) => {
+              const lines = e.target.value.split('\n');
+              setFormData({
+                ...formData,
+                rawText: lines,
+              });
+            }}
+            rows={Math.max(4, Math.min(formData.rawText.length + 2, 12))}
+            className="w-full px-4 py-2 border-2 border-gray-200 rounded focus:border-cf-red outline-none font-mono text-sm bg-gray-50"
+            placeholder="Raw text extracted from image (one line per row)"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Edit the raw text extracted from the image. Each line represents a row from the whiteboard.
+          </p>
         </div>
 
         {/* Actions */}

@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { WorkoutExtraction } from '../types';
+import { pluralizeMovements } from '../utils/movementUtils';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
@@ -159,11 +160,16 @@ export const workoutExtractor = {
                     }
 
                     console.log(`Successfully used model: ${modelName}`);
+                    
+                    // Pluralize movements that start with numbers
+                    const movements = extraction.movements || [];
+                    const pluralizedMovements = pluralizeMovements(movements);
+                    
                     return {
                         rawText: extraction.rawText,
                         type: extraction.type || 'unknown',
                         rounds: extraction.rounds ?? null,
-                        movements: extraction.movements || [],
+                        movements: pluralizedMovements,
                         times: extraction.times ?? null,
                         reps: extraction.reps ?? null,
                         confidence: extraction.confidence ?? 0.5,

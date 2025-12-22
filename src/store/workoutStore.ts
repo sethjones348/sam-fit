@@ -83,7 +83,7 @@ export const workoutStore = create<WorkoutStore>((set, get) => ({
       const workout: Workout = {
         id: uuidv4(),
         name: extraction.name?.trim() || generateDefaultName(),
-        date: new Date().toISOString(),
+        date: extraction.date || new Date().toISOString(),
         rawText: extraction.rawText,
         extractedData: {
           type: extraction.type,
@@ -138,6 +138,7 @@ export const workoutStore = create<WorkoutStore>((set, get) => ({
       const updatedWorkout: Workout = {
         ...existingWorkout,
         name: extraction.name?.trim() || generateDefaultName(),
+        date: extraction.date || existingWorkout.date,
         rawText: extraction.rawText,
         extractedData: {
           type: extraction.type,

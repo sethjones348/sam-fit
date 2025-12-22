@@ -21,6 +21,7 @@ export interface Workout {
 
 export interface WorkoutExtraction {
   name?: string; // Optional - will be auto-generated if not provided
+  date?: string; // ISO-8601 date string - optional, will default to current date if not provided
   rawText: string[];
   type: 'time' | 'reps' | 'unknown';
   rounds: number | null;

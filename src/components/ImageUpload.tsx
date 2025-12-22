@@ -1,7 +1,8 @@
 import { useState, useRef, DragEvent } from 'react';
+import exifr from 'exifr';
 
 interface ImageUploadProps {
-  onUpload: (imageBase64: string) => void;
+  onUpload: (imageBase64: string, dateTaken?: string) => void;
   isLoading: boolean;
   uploadedImage: string | null;
 }
@@ -14,17 +15,38 @@ export default function ImageUpload({
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFile = (file: File) => {
+  const handleFile = async (file: File) => {
     if (!file.type.startsWith('image/')) {
       alert('Please upload an image file');
       return;
+    }
+
+    // Try to extract EXIF date
+    let dateTaken: string | undefined;
+    try {
+      const exifData = await exifr.parse(file, { 
+        pick: ['DateTimeOriginal', 'CreateDate', 'ModifyDate'] 
+      });
+      
+      // Try DateTimeOriginal first, then CreateDate, then ModifyDate
+      const dateValue = exifData?.DateTimeOriginal || exifData?.CreateDate || exifData?.ModifyDate;
+      if (dateValue) {
+        // exifr returns dates in various formats, convert to ISO string
+        const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+        if (!isNaN(date.getTime())) {
+          dateTaken = date.toISOString();
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to extract EXIF date:', err);
+      // Continue without date - will default to upload date
     }
 
     const reader = new FileReader();
     reader.onload = (e) => {
       const result = e.target?.result;
       if (typeof result === 'string') {
-        onUpload(result);
+        onUpload(result, dateTaken);
       }
     };
     reader.readAsDataURL(file);
