@@ -44,7 +44,7 @@ export async function getFeedWorkouts(): Promise<FeedWorkout[]> {
     `)
     .in('user_id', followingIds)
     .eq('privacy', 'public')
-    .order('created_at', { ascending: false })
+    .order('date', { ascending: false })
     .limit(50); // Limit to 50 most recent workouts
 
   if (error) {
@@ -57,7 +57,7 @@ export async function getFeedWorkouts(): Promise<FeedWorkout[]> {
       .select('*')
       .in('user_id', followingIds)
       .eq('privacy', 'public')
-      .order('created_at', { ascending: false })
+      .order('date', { ascending: false })
       .limit(50);
 
     if (workoutsError) {
