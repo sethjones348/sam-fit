@@ -158,13 +158,17 @@ export default function FeedPage() {
             )}
           </div>
         ) : (
-          <div className="space-y-0 md:space-y-6 relative">
-            {/* Pull-to-refresh spinner (mobile only) - appears above first card */}
+          <div 
+            className="space-y-0 md:space-y-6 relative transition-transform duration-200 ease-out"
+            style={{
+              transform: pullTransform > 0 ? `translateY(${pullTransform}px)` : 'translateY(0)',
+            }}
+          >
+            {/* Pull-to-refresh spinner (mobile only) - appears above feed */}
             {showPullSpinner && (
               <div 
-                className="md:hidden absolute top-0 left-0 right-0 flex items-center justify-center py-3 bg-white z-10 transition-opacity"
+                className="md:hidden absolute -top-12 left-0 right-0 flex items-center justify-center py-3 bg-white z-10 transition-opacity"
                 style={{
-                  transform: `translateY(${Math.max(0, pullTransform - 60)}px)`,
                   opacity: pullDistance > 0 ? Math.min(1, pullDistance / 60) : 1,
                 }}
               >
@@ -183,13 +187,7 @@ export default function FeedPage() {
                   bg-white
                   md:bg-transparent
                   md:border-0
-                  transition-transform duration-200 ease-out
                 `}
-                style={{
-                  transform: index === 0 && pullTransform > 0 
-                    ? `translateY(${pullTransform}px)` 
-                    : 'translateY(0)',
-                }}
               >
                 <FeedWorkoutCard workout={workout} user={workout.user} />
               </div>
