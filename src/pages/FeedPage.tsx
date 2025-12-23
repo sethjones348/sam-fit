@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getFeedWorkouts, FeedWorkout } from '../services/feedService';
@@ -54,7 +54,7 @@ export default function FeedPage() {
   };
 
   // Pull-to-refresh hook (mobile only)
-  const { isRefreshing, pullProgress, elementRef } = usePullToRefresh({
+  const { isRefreshing, elementRef } = usePullToRefresh({
     onRefresh: loadFeed,
     enabled: isAuthenticated && !!user?.id,
   });
