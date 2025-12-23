@@ -56,8 +56,8 @@ export default function WorkoutsPage() {
   return (
     <div className="min-h-screen md:pt-20 md:pb-12">
       <div className="max-w-7xl mx-auto px-0 md:px-4 sm:px-6 lg:px-8">
-        <div className="mb-4 md:mb-8 px-4 md:px-0">
-          <h1 className="text-2xl md:text-3xl sm:text-4xl font-heading font-bold mb-4">Your Workouts</h1>
+        <div className="mb-4 md:mb-8 px-4 md:px-0 bg-white md:bg-transparent border-b md:border-b-0 border-gray-200 md:border-0 py-3 md:py-0 sticky md:static top-0 z-30">
+          <h1 className="text-xl md:text-3xl sm:text-4xl font-heading font-bold mb-3 md:mb-4">Your Workouts</h1>
           <SearchBar value={searchQuery} onChange={setSearchQuery} />
         </div>
 
@@ -102,7 +102,7 @@ export default function WorkoutsPage() {
               <div 
                 key={workout.id}
                 className={`
-                  ${index === 0 ? 'border-t-0' : 'border-t border-gray-200'}
+                  ${index === 0 ? 'border-t-0' : 'border-t-2 md:border-t border-gray-300 md:border-gray-200'}
                   md:border-t-0
                   px-4 md:px-0
                   py-4 md:py-0

@@ -89,7 +89,9 @@ export default function UploadPage() {
     return (
         <div className="min-h-screen md:pt-20 md:pb-12">
             <div className="max-w-4xl mx-auto px-0 md:px-4 sm:px-6 lg:px-8">
-                <h1 className="text-2xl md:text-3xl sm:text-4xl font-heading font-bold mb-4 md:mb-6 sm:mb-8 px-4 md:px-0">Upload Workout</h1>
+                <div className="bg-white md:bg-transparent border-b md:border-b-0 border-gray-200 md:border-0 py-3 md:py-0 px-4 md:px-0 sticky md:static top-0 z-30 mb-4 md:mb-6">
+                    <h1 className="text-xl md:text-3xl sm:text-4xl font-heading font-bold">Upload Workout</h1>
+                </div>
 
                 {error && (
                     <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded mb-6 mx-4 md:mx-0">

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { AuthProvider } from './hooks/useAuth';
 import Layout from './components/Layout';
@@ -41,11 +41,23 @@ function RedirectHandler() {
   return null;
 }
 
+// Component to scroll to top on route change
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+}
+
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter basename={BASENAME}>
         <RedirectHandler />
+        <ScrollToTop />
         <Layout>
             <Routes>
               <Route path="/" element={<FeedPage />} />
