@@ -21,8 +21,15 @@ export function usePullToRefresh({
   const handleRefresh = useCallback(async () => {
     if (isRefreshing) return;
     setIsRefreshing(true);
+    const startTime = Date.now();
     try {
       await onRefresh();
+      // Ensure spinner is visible for at least 1 second for better UX
+      const elapsed = Date.now() - startTime;
+      const minDelay = 1000; // 1 second minimum
+      if (elapsed < minDelay) {
+        await new Promise(resolve => setTimeout(resolve, minDelay - elapsed));
+      }
     } finally {
       setIsRefreshing(false);
     }
@@ -87,7 +94,8 @@ export function usePullToRefresh({
       // 2. User is pulling DOWN (distance > 10 to avoid accidental triggers)
       if (distance > 10) {
         e.preventDefault();
-        const pullAmount = Math.min(distance, threshold * 1.5);
+        // Allow more flexible pulling - up to 250px for smooth feel
+        const pullAmount = Math.min(distance, 250);
         pullDistanceRef.current = pullAmount;
         setPullDistance(pullAmount);
       } else {

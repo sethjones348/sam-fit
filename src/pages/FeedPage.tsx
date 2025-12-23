@@ -169,7 +169,7 @@ export default function FeedPage() {
               <div 
                 className="md:hidden absolute -top-12 left-0 right-0 flex items-center justify-center py-3 bg-white z-10 transition-opacity"
                 style={{
-                  opacity: pullDistance > 0 ? Math.min(1, pullDistance / 60) : 1,
+                  opacity: pullDistance > 0 ? Math.min(1, pullDistance / 80) : 1,
                 }}
               >
                 <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-cf-red"></div>
