@@ -106,30 +106,42 @@ export default function ProfilePage() {
     setWeeklyWorkouts(thisMonthWorkouts);
   }, [workouts]);
 
-  // Create GitHub-style contribution graph for the current month only
+  // Create week-based contribution graph for the current month
   const now = new Date();
   const monthStart = startOfMonth(now);
   const monthEnd = endOfMonth(now);
 
-  // Get the first day of the week for the month start (to align grid)
-  const weekStart = startOfWeek(monthStart, { weekStartsOn: 0 }); // Start from Sunday for grid alignment
+  // Get the first Monday of the month (or the first day if it's a Monday)
+  const firstWeekStart = startOfWeek(monthStart, { weekStartsOn: 1 }); // Monday
 
-  // Get all days from the week start to month end (includes padding days at start)
-  const allDays = eachDayOfInterval({
-    start: weekStart,
-    end: monthEnd,
-  });
+  // Get all weeks that contain days in the current month
+  const weeks: Date[][] = [];
+  let currentWeekStart = firstWeekStart;
+
+  while (currentWeekStart <= monthEnd) {
+    const weekEnd = new Date(currentWeekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6); // End of week (Sunday)
+
+    // Get all days in this week
+    const weekDays = eachDayOfInterval({
+      start: currentWeekStart,
+      end: weekEnd,
+    });
+
+    // Only include weeks that have at least one day in the current month
+    if (weekDays.some(day => day >= monthStart && day <= monthEnd)) {
+      weeks.push(weekDays);
+    }
+
+    // Move to next week
+    currentWeekStart = new Date(currentWeekStart);
+    currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+  }
 
   // Create a map of workout dates for quick lookup
   const workoutDates = new Set(
     weeklyWorkouts.map((workout) => format(parseISO(workout.date), 'yyyy-MM-dd'))
   );
-
-  // Organize days into weeks (7 days per row)
-  const weeks: Date[][] = [];
-  for (let i = 0; i < allDays.length; i += 7) {
-    weeks.push(allDays.slice(i, i + 7));
-  }
 
   const handleSave = async () => {
     if (!userId || !isOwnProfile) return;
@@ -298,41 +310,24 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* GitHub-style contribution graph */}
+              {/* Week-based contribution graph */}
               <div className="overflow-x-auto">
-                <div className="inline-block min-w-full">
-                  {/* Day labels */}
-                  <div className="flex gap-1 mb-2">
-                    <div className="w-3"></div> {/* Spacer for day labels */}
-                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, idx) => (
-                      <div key={day} className="flex-1 text-xs text-gray-500 text-center">
-                        {idx % 2 === 0 ? day : ''}
-                      </div>
-                    ))}
-                  </div>
+                <div className="space-y-2">
+                  {weeks.map((week, weekIdx) => {
+                    const weekStartDate = week[0];
+                    const hasMonthDay = week.some(day => day >= monthStart && day <= monthEnd);
 
-                  {/* Contribution grid */}
-                  <div className="flex gap-1">
-                    {/* Week labels */}
-                    <div className="flex flex-col gap-1 justify-start pt-1">
-                      {weeks.map((week, weekIdx) => {
-                        // Only show label for weeks that have a day in the current month
-                        const hasMonthDay = week.some(day =>
-                          day >= monthStart && day <= monthEnd
-                        );
-                        if (!hasMonthDay) return <div key={weekIdx} className="h-3"></div>;
-                        return (
-                          <div key={weekIdx} className="h-3 text-xs text-gray-500 text-right pr-2">
-                            {weekIdx % 2 === 0 ? format(week[0], 'MMM d') : ''}
-                          </div>
-                        );
-                      })}
-                    </div>
+                    if (!hasMonthDay) return null;
 
-                    {/* Contribution squares */}
-                    <div className="flex-1">
-                      {weeks.map((week, weekIdx) => (
-                        <div key={weekIdx} className="flex gap-1 mb-1">
+                    return (
+                      <div key={weekIdx} className="flex items-center gap-3">
+                        {/* Week label */}
+                        <div className="w-16 text-xs text-gray-600 text-right flex-shrink-0">
+                          {format(weekStartDate, 'MMM d')}
+                        </div>
+
+                        {/* Week squares - all same size */}
+                        <div className="flex gap-1.5 flex-1">
                           {week.map((day) => {
                             const dayStr = format(day, 'yyyy-MM-dd');
                             const hasWorkout = workoutDates.has(dayStr);
@@ -341,30 +336,30 @@ export default function ProfilePage() {
                             return (
                               <div
                                 key={dayStr}
-                                className={`flex-1 aspect-square rounded-sm ${hasWorkout && isCurrentMonth
-                                    ? 'bg-cf-red/40 hover:bg-cf-red/60'
-                                    : isCurrentMonth
-                                      ? 'bg-gray-100 hover:bg-gray-200'
-                                      : 'bg-transparent'
+                                className={`w-8 h-8 rounded-sm flex-shrink-0 ${hasWorkout && isCurrentMonth
+                                  ? 'bg-cf-red/40 hover:bg-cf-red/60'
+                                  : isCurrentMonth
+                                    ? 'bg-gray-100 hover:bg-gray-200'
+                                    : 'bg-transparent'
                                   } transition-colors cursor-pointer`}
                                 title={isCurrentMonth ? `${format(day, 'MMM d, yyyy')}${hasWorkout ? ' - Workout' : ' - No workout'}` : ''}
                               />
                             );
                           })}
                         </div>
-                      ))}
-                    </div>
-                  </div>
+                      </div>
+                    );
+                  })}
+                </div>
 
-                  {/* Legend */}
-                  <div className="flex items-center gap-2 mt-4 text-xs text-gray-600">
-                    <span>Less</span>
-                    <div className="flex gap-1">
-                      <div className="w-3 h-3 rounded-sm bg-gray-100"></div>
-                      <div className="w-3 h-3 rounded-sm bg-cf-red/40"></div>
-                    </div>
-                    <span>More</span>
+                {/* Legend */}
+                <div className="flex items-center gap-2 mt-4 text-xs text-gray-600">
+                  <span>Less</span>
+                  <div className="flex gap-1">
+                    <div className="w-3 h-3 rounded-sm bg-gray-100"></div>
+                    <div className="w-3 h-3 rounded-sm bg-cf-red/40"></div>
                   </div>
+                  <span>More</span>
                 </div>
               </div>
             </div>

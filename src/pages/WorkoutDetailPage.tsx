@@ -30,7 +30,9 @@ export default function WorkoutDetailPage() {
                 const found = workouts.find((w) => w.id === id);
                 if (found) {
                     setWorkout(found);
-                    setIsOwnWorkout(found.userId === user?.id);
+                    // Check if this is the user's workout
+                    const isOwn = found.userId && user?.id && found.userId === user.id;
+                    setIsOwnWorkout(isOwn);
                     setIsLoading(false);
                     return;
                 }
@@ -39,13 +41,17 @@ export default function WorkoutDetailPage() {
                 const fetchedWorkout = await supabaseStorage.getWorkoutById(id);
                 if (fetchedWorkout) {
                     setWorkout(fetchedWorkout);
-                    setIsOwnWorkout(fetchedWorkout.userId === user?.id);
+                    // Check if this is the user's workout
+                    const isOwn = fetchedWorkout.userId && user?.id && fetchedWorkout.userId === user.id;
+                    setIsOwnWorkout(isOwn);
                 } else {
                     setWorkout(null);
+                    setIsOwnWorkout(false);
                 }
             } catch (error) {
                 console.error('Failed to load workout:', error);
                 setWorkout(null);
+                setIsOwnWorkout(false);
             } finally {
                 setIsLoading(false);
             }
