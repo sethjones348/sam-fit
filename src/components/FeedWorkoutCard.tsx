@@ -26,9 +26,9 @@ export default function FeedWorkoutCard({ workout, user }: FeedWorkoutCardProps)
   const userId = user?.id || workout.userId;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white md:border md:border-gray-200 md:rounded-lg overflow-hidden md:mb-6 md:shadow-sm md:hover:shadow-md md:transition-shadow">
       {/* User Header - Strava style */}
-      <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+      <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-white md:bg-transparent">
         <div className="flex items-center space-x-3">
           <Link
             to={`/profile/${userId}`}

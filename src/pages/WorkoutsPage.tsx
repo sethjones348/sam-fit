@@ -55,14 +55,14 @@ export default function WorkoutsPage() {
 
   return (
     <div className="min-h-screen md:pt-20 md:pb-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-heading font-bold mb-4">Your Workouts</h1>
+      <div className="max-w-7xl mx-auto px-0 md:px-4 sm:px-6 lg:px-8">
+        <div className="mb-4 md:mb-8 px-4 md:px-0">
+          <h1 className="text-2xl md:text-3xl sm:text-4xl font-heading font-bold mb-4">Your Workouts</h1>
           <SearchBar value={searchQuery} onChange={setSearchQuery} />
         </div>
 
         {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded text-red-700">
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded text-red-700 mx-4 md:mx-0">
             {error}
           </div>
         )}
@@ -97,9 +97,20 @@ export default function WorkoutsPage() {
             )}
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredWorkouts.map((workout) => (
-              <WorkoutCard key={workout.id} workout={workout} />
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-0 md:gap-6">
+            {filteredWorkouts.map((workout, index) => (
+              <div 
+                key={workout.id}
+                className={`
+                  ${index === 0 ? 'border-t-0' : 'border-t border-gray-200'}
+                  md:border-t-0
+                  px-4 md:px-0
+                  py-4 md:py-0
+                  bg-white md:bg-transparent
+                `}
+              >
+                <WorkoutCard workout={workout} />
+              </div>
             ))}
           </div>
         )}

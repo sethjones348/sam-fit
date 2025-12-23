@@ -9,7 +9,7 @@ interface WorkoutCardProps {
 
 export default function WorkoutCard({ workout }: WorkoutCardProps) {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-all hover:-translate-y-1">
+    <div className="bg-white md:border md:border-gray-200 md:rounded-lg p-0 md:p-6 md:hover:shadow-lg md:transition-all md:hover:-translate-y-1">
       <Link to={`/workout/${workout.id}`} className="block">
         <div className="flex justify-between items-start mb-4 gap-2">
           <h3 className="text-lg sm:text-xl font-heading font-bold text-black flex-1 min-w-0">

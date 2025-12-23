@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getFeedWorkouts, FeedWorkout } from '../services/feedService';
 import { getFollowing } from '../services/friendService';
 import { supabaseStorage } from '../services/supabaseStorage';
 import FeedWorkoutCard from '../components/FeedWorkoutCard';
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
 
 export default function FeedPage() {
   const { isAuthenticated, user, login } = useAuth();
@@ -52,6 +53,12 @@ export default function FeedPage() {
     }
   };
 
+  // Pull-to-refresh hook (mobile only)
+  const { isRefreshing, pullProgress, elementRef } = usePullToRefresh({
+    onRefresh: loadFeed,
+    enabled: isAuthenticated && !!user?.id,
+  });
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center pt-20 px-4">
@@ -75,15 +82,26 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="min-h-screen md:pt-20 md:pb-12">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div 
+      ref={elementRef}
+      className="min-h-screen md:pt-20 md:pb-12 relative"
+    >
+      {/* Pull-to-refresh indicator (mobile only) */}
+      {isRefreshing && (
+        <div className="md:hidden fixed top-14 left-0 right-0 z-50 flex items-center justify-center py-2 bg-white border-b border-gray-200">
+          <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-cf-red"></div>
+          <span className="ml-2 text-sm text-gray-600">Refreshing...</span>
+        </div>
+      )}
+      
+      <div className="max-w-2xl mx-auto px-0 md:px-4 sm:px-6 lg:px-8">
         {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded text-red-700">
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded text-red-700 mx-4 md:mx-0">
             {error}
           </div>
         )}
 
-        {isLoading ? (
+        {isLoading && !isRefreshing ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-cf-red mb-4"></div>
             <p className="text-lg text-gray-600">Loading feed...</p>
@@ -144,9 +162,19 @@ export default function FeedPage() {
             )}
           </div>
         ) : (
-          <div className="space-y-6">
-            {workouts.map((workout) => (
-              <FeedWorkoutCard key={workout.id} workout={workout} user={workout.user} />
+          <div className="space-y-0 md:space-y-6">
+            {workouts.map((workout, index) => (
+              <div 
+                key={workout.id}
+                className={`
+                  ${index === 0 ? 'border-t-0' : 'border-t border-gray-200'}
+                  bg-white
+                  md:bg-transparent
+                  md:border-0
+                `}
+              >
+                <FeedWorkoutCard workout={workout} user={workout.user} />
+              </div>
             ))}
           </div>
         )}

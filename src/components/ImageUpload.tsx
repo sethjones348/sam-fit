@@ -112,6 +112,7 @@ export default function ImageUpload({
         ref={fileInputRef}
         type="file"
         accept="image/*"
+        capture="environment"
         onChange={handleFileInput}
         className="hidden"
       />
@@ -121,13 +122,15 @@ export default function ImageUpload({
         Upload Workout Photo
       </h3>
       <p className="text-sm sm:text-base text-gray-600 mb-4 px-2">
-        Drag and drop your whiteboard photo here, or click to browse
+        <span className="md:hidden">Tap to take a photo or choose from gallery</span>
+        <span className="hidden md:inline">Drag and drop your whiteboard photo here, or click to browse</span>
       </p>
       <button
         type="button"
-        className="bg-cf-red text-white px-6 py-3 rounded font-semibold uppercase tracking-wider hover:bg-cf-red-hover transition-all min-h-[44px]"
+        className="bg-cf-red text-white px-6 py-3 rounded font-semibold uppercase tracking-wider hover:bg-cf-red-hover transition-all min-h-[44px] md:min-h-[44px]"
       >
-        Choose File
+        <span className="md:hidden">Take Photo</span>
+        <span className="hidden md:inline">Choose File</span>
       </button>
     </div>
   );

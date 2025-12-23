@@ -157,24 +157,24 @@ export default function FriendsPage() {
 
   return (
     <div className="min-h-screen md:pt-20 md:pb-12">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-heading font-bold mb-6">Friends</h1>
+      <div className="max-w-4xl mx-auto px-0 md:px-4 sm:px-6 lg:px-8">
+        <h1 className="text-2xl md:text-3xl font-heading font-bold mb-4 md:mb-6 px-4 md:px-0">Friends</h1>
 
         {/* Tabs */}
-        <div className="flex space-x-4 mb-6 border-b border-gray-200">
+        <div className="flex space-x-2 md:space-x-4 mb-4 md:mb-6 border-b border-gray-200 px-4 md:px-0 overflow-x-auto">
           <button
             onClick={() => setActiveTab('invite')}
-            className={`pb-2 px-4 font-semibold uppercase tracking-wider text-sm transition-colors ${
+            className={`pb-2 px-2 md:px-4 font-semibold uppercase tracking-wider text-xs md:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === 'invite'
                 ? 'text-cf-red border-b-2 border-cf-red'
                 : 'text-gray-600 hover:text-cf-red'
             }`}
           >
-            Invite Friend
+            Invite
           </button>
           <button
             onClick={() => setActiveTab('pending')}
-            className={`pb-2 px-4 font-semibold uppercase tracking-wider text-sm transition-colors ${
+            className={`pb-2 px-2 md:px-4 font-semibold uppercase tracking-wider text-xs md:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === 'pending'
                 ? 'text-cf-red border-b-2 border-cf-red'
                 : 'text-gray-600 hover:text-cf-red'
@@ -184,7 +184,7 @@ export default function FriendsPage() {
           </button>
           <button
             onClick={() => setActiveTab('sent')}
-            className={`pb-2 px-4 font-semibold uppercase tracking-wider text-sm transition-colors ${
+            className={`pb-2 px-2 md:px-4 font-semibold uppercase tracking-wider text-xs md:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === 'sent'
                 ? 'text-cf-red border-b-2 border-cf-red'
                 : 'text-gray-600 hover:text-cf-red'
@@ -194,7 +194,7 @@ export default function FriendsPage() {
           </button>
           <button
             onClick={() => setActiveTab('following')}
-            className={`pb-2 px-4 font-semibold uppercase tracking-wider text-sm transition-colors ${
+            className={`pb-2 px-2 md:px-4 font-semibold uppercase tracking-wider text-xs md:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === 'following'
                 ? 'text-cf-red border-b-2 border-cf-red'
                 : 'text-gray-600 hover:text-cf-red'
@@ -212,7 +212,7 @@ export default function FriendsPage() {
 
         {/* Invite Friend Tab */}
         {activeTab === 'invite' && (
-          <div className="bg-white border border-gray-200 rounded-lg shadow-md p-6">
+          <div className="bg-white md:border md:border-gray-200 md:rounded-lg md:shadow-md p-4 md:p-6 mx-0 md:mx-0">
             <h2 className="text-xl font-heading font-bold mb-4">Invite a Friend</h2>
             <p className="text-gray-600 mb-4">
               Enter your friend's email address to send them a friend request. They'll be able to see your public workouts in their feed once they accept.
@@ -244,7 +244,7 @@ export default function FriendsPage() {
 
         {/* Pending Requests Tab */}
         {activeTab === 'pending' && (
-          <div className="bg-white border border-gray-200 rounded-lg shadow-md p-6">
+          <div className="bg-white md:border md:border-gray-200 md:rounded-lg md:shadow-md p-4 md:p-6 mx-0 md:mx-0">
             <h2 className="text-xl font-heading font-bold mb-4">Pending Friend Requests</h2>
             {isLoading ? (
               <div className="text-center py-8">
@@ -258,7 +258,7 @@ export default function FriendsPage() {
                 {pendingRequests.map((request) => (
                   <div
                     key={request.id}
-                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
+                    className="flex items-center justify-between p-4 border-b md:border md:border-gray-200 md:rounded-lg last:border-b-0 md:last:border-b"
                   >
                     <div className="flex items-center space-x-4">
                       {request.fromUser?.picture ? (
@@ -279,16 +279,16 @@ export default function FriendsPage() {
                         <p className="text-sm text-gray-600">{request.fromUser?.email || request.toEmail}</p>
                       </div>
                     </div>
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-2 flex-shrink-0">
                       <button
                         onClick={() => handleAccept(request.id)}
-                        className="bg-cf-red text-white px-4 py-2 rounded font-semibold uppercase tracking-wider hover:bg-cf-red-hover transition-all min-h-[44px]"
+                        className="bg-cf-red text-white px-3 py-1.5 md:px-4 md:py-2 rounded text-xs md:text-sm font-semibold uppercase tracking-wider hover:bg-cf-red-hover transition-all min-h-[36px] md:min-h-[44px] whitespace-nowrap"
                       >
                         Accept
                       </button>
                       <button
                         onClick={() => handleDecline(request.id)}
-                        className="bg-gray-200 text-gray-700 px-4 py-2 rounded font-semibold uppercase tracking-wider hover:bg-gray-300 transition-all min-h-[44px]"
+                        className="bg-gray-200 text-gray-700 px-3 py-1.5 md:px-4 md:py-2 rounded text-xs md:text-sm font-semibold uppercase tracking-wider hover:bg-gray-300 transition-all min-h-[36px] md:min-h-[44px] whitespace-nowrap"
                       >
                         Decline
                       </button>
@@ -302,7 +302,7 @@ export default function FriendsPage() {
 
         {/* Sent Requests Tab */}
         {activeTab === 'sent' && (
-          <div className="bg-white border border-gray-200 rounded-lg shadow-md p-6">
+          <div className="bg-white md:border md:border-gray-200 md:rounded-lg md:shadow-md p-4 md:p-6 mx-0 md:mx-0">
             <h2 className="text-xl font-heading font-bold mb-4">Sent Friend Requests</h2>
             {isLoading ? (
               <div className="text-center py-8">
@@ -316,7 +316,7 @@ export default function FriendsPage() {
                 {sentRequests.map((request) => (
                   <div
                     key={request.id}
-                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
+                    className="flex items-center justify-between p-4 border-b md:border md:border-gray-200 md:rounded-lg last:border-b-0 md:last:border-b"
                   >
                     <div className="flex items-center space-x-4">
                       {request.toUser?.picture ? (
@@ -355,7 +355,7 @@ export default function FriendsPage() {
 
         {/* Following Tab */}
         {activeTab === 'following' && (
-          <div className="bg-white border border-gray-200 rounded-lg shadow-md p-6">
+          <div className="bg-white md:border md:border-gray-200 md:rounded-lg md:shadow-md p-4 md:p-6 mx-0 md:mx-0">
             <h2 className="text-xl font-heading font-bold mb-4">Following</h2>
             {isLoading ? (
               <div className="text-center py-8">
@@ -369,35 +369,35 @@ export default function FriendsPage() {
                 {following.map((follow) => (
                   <div
                     key={follow.id}
-                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
+                    className="flex items-center justify-between p-4 border-b md:border md:border-gray-200 md:rounded-lg last:border-b-0 md:last:border-b"
                   >
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-3 md:space-x-4 flex-1 min-w-0">
                       {follow.following?.picture ? (
                         <img
                           src={follow.following.picture}
                           alt={follow.following.name}
-                          className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
+                          className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover border-2 border-gray-200 flex-shrink-0"
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cf-red to-cf-red-hover flex items-center justify-center border-2 border-gray-200">
-                          <span className="text-white text-sm font-bold">
+                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-cf-red to-cf-red-hover flex items-center justify-center border-2 border-gray-200 flex-shrink-0">
+                          <span className="text-white text-xs md:text-sm font-bold">
                             {follow.following?.name?.[0]?.toUpperCase() || '?'}
                           </span>
                         </div>
                       )}
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <Link
                           to={`/profile/${follow.followingId}`}
-                          className="font-semibold hover:text-cf-red transition-colors"
+                          className="font-semibold hover:text-cf-red transition-colors block truncate"
                         >
                           {follow.following?.name || 'Unknown User'}
                         </Link>
-                        <p className="text-sm text-gray-600">{follow.following?.email}</p>
+                        <p className="text-xs md:text-sm text-gray-600 truncate">{follow.following?.email}</p>
                       </div>
                     </div>
                     <button
                       onClick={() => handleUnfollow(follow.followingId)}
-                      className="bg-gray-200 text-gray-700 px-4 py-2 rounded font-semibold uppercase tracking-wider hover:bg-gray-300 transition-all min-h-[44px]"
+                      className="bg-gray-200 text-gray-700 px-3 py-1.5 md:px-4 md:py-2 rounded text-xs md:text-sm font-semibold uppercase tracking-wider hover:bg-gray-300 transition-all min-h-[36px] md:min-h-[44px] whitespace-nowrap"
                     >
                       Unfollow
                     </button>
