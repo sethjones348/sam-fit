@@ -247,7 +247,7 @@ export default function WorkoutEditor({
               <label className="block text-xs text-gray-600 mb-1">Time</label>
               {formData.date ? (
                 <>
-                  <div className="flex items-center gap-2">
+                  <div className="relative">
                     <input
                       type="text"
                       value={timeInputValue}
@@ -289,16 +289,16 @@ export default function WorkoutEditor({
                         }
                       }}
                       placeholder="hh:mm AM/PM"
-                      className="flex-1 px-4 py-2 border-2 border-gray-200 rounded focus:border-cf-red outline-none min-h-[44px] bg-white"
+                      className="w-full px-4 py-2 pr-10 border-2 border-gray-200 rounded focus:border-cf-red outline-none min-h-[44px] bg-white"
                     />
                     <button
                       type="button"
                       onClick={() => setShowTimePicker(!showTimePicker)}
-                      className="px-3 py-2 border-2 border-gray-200 rounded hover:border-cf-red focus:border-cf-red outline-none transition-colors min-h-[44px] flex items-center justify-center"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-cf-red transition-colors"
                       title="Select time"
                     >
                       <svg
-                        className="w-5 h-5 text-gray-600"
+                        className="w-5 h-5"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
