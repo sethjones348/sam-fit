@@ -6,7 +6,7 @@ import { getFollowing } from '../services/friendService';
 import { workoutStore } from '../store/workoutStore';
 import { supabase } from '../lib/supabase';
 import { Workout } from '../types';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isWithinInterval, parseISO, startOfWeek } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isWithinInterval, parseISO, startOfWeek, subDays } from 'date-fns';
 import { uploadProfilePicture } from '../services/profileImageService';
 
 export default function ProfilePage() {
@@ -33,6 +33,8 @@ export default function ProfilePage() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [friendsCount, setFriendsCount] = useState(0);
   const [weeklyWorkouts, setWeeklyWorkouts] = useState<Workout[]>([]);
+  const [movementAnalysisPeriod, setMovementAnalysisPeriod] = useState<'7days' | '30days' | 'alltime'>('30days');
+  const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
   const { workouts, loadWorkouts } = workoutStore();
 
   const userId = id || currentUser?.id;
@@ -706,13 +708,98 @@ export default function ProfilePage() {
         {workouts.length > 0 && (
           <div className="bg-white md:border md:border-gray-200 md:rounded-lg md:shadow-md mt-4 md:mt-6 overflow-hidden">
             <div className="px-4 md:px-6 py-4 md:py-6 border-b border-gray-200">
-              <h2 className="text-lg md:text-xl font-heading font-bold mb-4">Movement Analysis</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg md:text-xl font-heading font-bold">Movement Analysis</h2>
+                {/* Time Period Filter Dropdown */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowPeriodDropdown(!showPeriodDropdown)}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-cf-red focus:ring-offset-2"
+                  >
+                    <span>
+                      {movementAnalysisPeriod === '7days' ? 'Last 7 days' :
+                       movementAnalysisPeriod === '30days' ? 'Last 30 days' :
+                       'All time'}
+                    </span>
+                    <svg
+                      className={`w-4 h-4 text-gray-500 transition-transform ${showPeriodDropdown ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {showPeriodDropdown && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setShowPeriodDropdown(false)}
+                      />
+                      <div className="absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                        <div className="py-1">
+                          {(['7days', '30days', 'alltime'] as const).map((period) => (
+                            <button
+                              key={period}
+                              type="button"
+                              onClick={() => {
+                                setMovementAnalysisPeriod(period);
+                                setShowPeriodDropdown(false);
+                              }}
+                              className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 hover:bg-gray-50 ${
+                                movementAnalysisPeriod === period ? 'bg-blue-50 text-cf-red' : 'text-gray-700'
+                              }`}
+                            >
+                              {movementAnalysisPeriod === period && (
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                              <span className={movementAnalysisPeriod === period ? 'font-semibold' : ''}>
+                                {period === '7days' ? 'Last 7 days' :
+                                 period === '30days' ? 'Last 30 days' :
+                                 'All time'}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
 
               {(() => {
+                // Filter workouts based on selected time period
+                const now = new Date();
+                let filteredWorkouts = workouts;
+                
+                if (movementAnalysisPeriod === '7days') {
+                  const sevenDaysAgo = subDays(now, 7);
+                  filteredWorkouts = workouts.filter((workout) => {
+                    const workoutDate = parseISO(workout.date);
+                    return workoutDate >= sevenDaysAgo;
+                  });
+                } else if (movementAnalysisPeriod === '30days') {
+                  const thirtyDaysAgo = subDays(now, 30);
+                  filteredWorkouts = workouts.filter((workout) => {
+                    const workoutDate = parseISO(workout.date);
+                    return workoutDate >= thirtyDaysAgo;
+                  });
+                }
+                // 'alltime' uses all workouts, no filtering needed
+
+                if (filteredWorkouts.length === 0) {
+                  return (
+                    <p className="text-sm text-gray-500">No workout data available for the selected period</p>
+                  );
+                }
+
                 // Calculate movement frequency and volume
                 const movementStats: Record<string, { frequency: number; volume: number }> = {};
 
-                workouts.forEach((workout) => {
+                filteredWorkouts.forEach((workout) => {
                   const movements = workout.extractedData.movements || [];
                   const reps = workout.extractedData.reps || [];
                   const rounds = workout.extractedData.rounds || 1;
