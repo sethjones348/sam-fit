@@ -1,0 +1,54 @@
+========================================
+Gemini API Image Test Tool
+========================================
+
+SETUP INSTRUCTIONS:
+-------------------
+
+1. API Key is already set up:
+   - The API_KEY.txt file is already included in this directory
+   - No need to configure anything!
+
+2. Edit the prompt (optional):
+   - Open PROMPT.txt
+   - Edit the prompt to customize what you want Gemini to do
+   - Save the file
+
+3. Add your image:
+   - Place an image file in this directory
+   - Supported formats: .jpg, .jpeg, .png, .webp, .gif
+   - Name it anything (e.g., "workout.jpg", "test.png", etc.)
+   - The script will automatically find and use the first image it finds
+
+4. Run the test:
+   - Double-click "test-gemini.bat" (Windows)
+   - Or open Command Prompt in this directory and type: test-gemini.bat
+
+========================================
+WHAT THE SCRIPT DOES:
+========================================
+
+1. Reads the prompt from PROMPT.txt
+2. Finds the first image file in this directory
+3. Converts the image to base64
+4. Sends the image and prompt to Gemini API
+5. Displays the response
+
+========================================
+TROUBLESHOOTING:
+========================================
+
+- "API key not found": Make sure API_KEY.txt exists in this directory
+- "No image file found": Make sure you placed an image file in this directory
+- "curl command failed": Make sure you're on Windows 10+ (curl comes built-in)
+- "API returned an error": Check the error message in the response for details
+
+========================================
+OUTPUT:
+========================================
+
+The script will display the full JSON response from Gemini.
+Look for the "text" field in the response to see what Gemini extracted.
+
+========================================
+

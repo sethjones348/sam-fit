@@ -7,6 +7,11 @@ export interface UserProfile {
   name: string;
   picture?: string;
   bio?: string;
+  // CrossFit-related fields
+  boxName?: string; // CrossFit box/gym name
+  level?: string; // e.g., "Beginner", "Intermediate", "Advanced", "Rx"
+  favoriteMovements?: string[]; // Array of favorite movements
+  prs?: Record<string, string>; // Personal records: { "Deadlift": "315 lbs", "Fran": "4:32" }
   settings: {
     workoutPrivacy: 'public' | 'private';
     showEmail: boolean;
@@ -54,7 +59,14 @@ export async function getOrCreateUserProfile(user: User): Promise<UserProfile> {
     throw new Error(`Failed to create user profile: ${createError?.message || 'Unknown error'}`);
   }
 
-  return createdUser as UserProfile;
+  // Transform database fields to interface fields
+  const profile = createdUser as any;
+  return {
+    ...profile,
+    boxName: profile.box_name,
+    favoriteMovements: profile.favorite_movements || [],
+    prs: profile.prs || {},
+  } as UserProfile;
 }
 
 /**
@@ -62,13 +74,17 @@ export async function getOrCreateUserProfile(user: User): Promise<UserProfile> {
  */
 export async function updateUserProfile(
   userId: string,
-  updates: Partial<Pick<UserProfile, 'name' | 'bio' | 'picture' | 'settings'>>
+  updates: Partial<Pick<UserProfile, 'name' | 'bio' | 'picture' | 'boxName' | 'level' | 'favoriteMovements' | 'prs' | 'settings'>>
 ): Promise<UserProfile> {
   // Prepare update object - handle settings separately if provided
   const updateData: any = {};
   if (updates.name !== undefined) updateData.name = updates.name;
   if (updates.bio !== undefined) updateData.bio = updates.bio;
   if (updates.picture !== undefined) updateData.picture = updates.picture;
+  if (updates.boxName !== undefined) updateData.box_name = updates.boxName;
+  if (updates.level !== undefined) updateData.level = updates.level;
+  if (updates.favoriteMovements !== undefined) updateData.favorite_movements = updates.favoriteMovements;
+  if (updates.prs !== undefined) updateData.prs = updates.prs;
   
   // If settings are provided, merge with existing settings
   if (updates.settings) {
@@ -94,7 +110,14 @@ export async function updateUserProfile(
     throw new Error(`Failed to update user profile: ${error?.message || 'Unknown error'}`);
   }
 
-  return data as UserProfile;
+  // Transform database fields to interface fields
+  const profile = data as any;
+  return {
+    ...profile,
+    boxName: profile.box_name,
+    favoriteMovements: profile.favorite_movements || [],
+    prs: profile.prs || {},
+  } as UserProfile;
 }
 
 /**
@@ -115,7 +138,14 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     throw new Error(`Failed to get user profile: ${error.message}`);
   }
 
-  return data as UserProfile;
+  // Transform database fields to interface fields
+  const profile = data as any;
+  return {
+    ...profile,
+    boxName: profile.box_name,
+    favoriteMovements: profile.favorite_movements || [],
+    prs: profile.prs || {},
+  } as UserProfile;
 }
 
 /**
@@ -136,6 +166,13 @@ export async function getUserProfileByEmail(email: string): Promise<UserProfile 
     throw new Error(`Failed to get user profile: ${error.message}`);
   }
 
-  return data as UserProfile;
+  // Transform database fields to interface fields
+  const profile = data as any;
+  return {
+    ...profile,
+    boxName: profile.box_name,
+    favoriteMovements: profile.favorite_movements || [],
+    prs: profile.prs || {},
+  } as UserProfile;
 }
 

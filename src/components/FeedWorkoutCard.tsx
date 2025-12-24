@@ -74,14 +74,14 @@ export default function FeedWorkoutCard({ workout, user }: FeedWorkoutCardProps)
         </span>
       </div>
 
-      {/* Workout Image - Strava style large image */}
+      {/* Workout Image - Full picture */}
       {workout.imageUrl && (
         <Link to={`/workout/${workout.id}`} className="block">
-          <div className="w-full aspect-video bg-gray-100 overflow-hidden">
+          <div className="w-full bg-gray-100 overflow-hidden">
             <img
               src={workout.imageUrl}
               alt={workout.name || 'Workout'}
-              className="w-full h-full object-cover hover:opacity-95 transition-opacity"
+              className="w-full h-auto object-contain hover:opacity-95 transition-opacity"
             />
           </div>
         </Link>
@@ -117,11 +117,11 @@ export default function FeedWorkoutCard({ workout, user }: FeedWorkoutCardProps)
             </div>
           )}
 
-          {/* Raw Text Preview - Strava style description */}
-          {workout.rawText.length > 0 && (
-            <div className="bg-gray-50 border border-gray-200 rounded p-3 mb-3">
-              <p className="text-xs text-gray-600 font-mono line-clamp-2">
-                {workout.rawText.join(' | ')}
+          {/* Notes - if available */}
+          {workout.metadata?.notes && (
+            <div className="mb-3">
+              <p className="text-sm text-gray-700 leading-relaxed">
+                {workout.metadata.notes}
               </p>
             </div>
           )}

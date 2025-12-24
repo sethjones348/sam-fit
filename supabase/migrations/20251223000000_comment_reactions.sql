@@ -1,5 +1,5 @@
 -- Comment reactions table (fist bumps on comments)
-CREATE TABLE comment_reactions (
+CREATE TABLE IF NOT EXISTS comment_reactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   comment_id UUID REFERENCES comments(id) ON DELETE CASCADE,
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -8,13 +8,18 @@ CREATE TABLE comment_reactions (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_comment_reactions_comment_id ON comment_reactions(comment_id);
-CREATE INDEX idx_comment_reactions_user_id ON comment_reactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_comment_reactions_comment_id ON comment_reactions(comment_id);
+CREATE INDEX IF NOT EXISTS idx_comment_reactions_user_id ON comment_reactions(user_id);
 
 -- Enable RLS
 ALTER TABLE comment_reactions ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for comment reactions
+-- Drop existing policies if they exist (to allow re-running migration)
+DROP POLICY IF EXISTS "Users can read reactions on visible comments" ON comment_reactions;
+DROP POLICY IF EXISTS "Users can insert reactions on visible comments" ON comment_reactions;
+DROP POLICY IF EXISTS "Users can delete own comment reactions" ON comment_reactions;
+
 -- Users can read reactions on comments they can see
 CREATE POLICY "Users can read reactions on visible comments" ON comment_reactions
   FOR SELECT USING (

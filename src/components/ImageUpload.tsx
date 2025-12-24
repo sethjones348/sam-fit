@@ -76,6 +76,24 @@ export default function ImageUpload({
     if (file) {
       handleFile(file);
     }
+    // Reset input so same file can be selected again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleCameraClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.setAttribute('capture', 'environment');
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleUploadClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.removeAttribute('capture');
+      fileInputRef.current.click();
+    }
   };
 
   if (uploadedImage) {
@@ -101,12 +119,11 @@ export default function ImageUpload({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`border-3 border-dashed rounded-lg p-6 sm:p-12 text-center transition-all cursor-pointer ${
+      className={`border-3 border-dashed rounded-lg p-6 sm:p-12 text-center transition-all ${
         isDragging
           ? 'border-cf-red bg-red-50'
           : 'border-gray-300 bg-gray-50 hover:border-cf-red hover:bg-white'
       }`}
-      onClick={() => fileInputRef.current?.click()}
     >
       <input
         ref={fileInputRef}
@@ -121,16 +138,25 @@ export default function ImageUpload({
         Upload Workout Photo
       </h3>
       <p className="text-sm sm:text-base text-gray-600 mb-4 px-2">
-        <span className="md:hidden">Tap to take a photo or choose from gallery</span>
+        <span className="md:hidden">Upload a photo of your workout whiteboard</span>
         <span className="hidden md:inline">Drag and drop your whiteboard photo here, or click to browse</span>
       </p>
-      <button
-        type="button"
-        className="bg-cf-red text-white px-6 py-3 rounded font-semibold uppercase tracking-wider hover:bg-cf-red-hover transition-all min-h-[44px] md:min-h-[44px]"
-      >
-        <span className="md:hidden">Take Photo</span>
-        <span className="hidden md:inline">Choose File</span>
-      </button>
+      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <button
+          type="button"
+          onClick={handleUploadClick}
+          className="bg-cf-red text-white px-6 py-3 rounded font-semibold uppercase tracking-wider hover:bg-cf-red-hover transition-all min-h-[44px]"
+        >
+          Upload Photo
+        </button>
+        <button
+          type="button"
+          onClick={handleCameraClick}
+          className="bg-white border-2 border-cf-red text-cf-red px-6 py-3 rounded font-semibold uppercase tracking-wider hover:bg-red-50 transition-all min-h-[44px] md:hidden"
+        >
+          📷 Take Photo
+        </button>
+      </div>
     </div>
   );
 }

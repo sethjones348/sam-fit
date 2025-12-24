@@ -172,7 +172,7 @@ export const supabaseStorage = {
             query = query.or('privacy.eq.public,privacy.is.null');
         }
         
-        const { data, error } = await query.order('created_at', { ascending: false });
+        const { data, error } = await query.order('date', { ascending: false });
 
         if (error) {
             throw new Error(`Failed to load workouts: ${error.message}`);

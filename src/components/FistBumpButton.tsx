@@ -147,7 +147,7 @@ export default function FistBumpButton({
         {(count > 0 || commentCount > 0) && (
           <span className="text-sm font-semibold">
             {[
-              count > 0 && (count === 1 ? '1 fist' : `${count} fists`),
+              count > 0 && (count === 1 ? '1 fist bump' : `${count} fist bumps`),
               commentCount > 0 && (commentCount === 1 ? '1 comment' : `${commentCount} comments`),
             ].filter(Boolean).join(', ')}
           </span>

@@ -1,4 +1,6 @@
 import { supabase } from '../lib/supabase';
+import { sendFriendInviteEmail } from './emailService';
+import { getUserProfile } from './userService';
 
 export interface FriendRequest {
   id: string;
@@ -99,6 +101,21 @@ export async function sendFriendRequest(toEmail: string): Promise<FriendRequest>
 
   if (error || !data) {
     throw new Error(`Failed to send friend request: ${error?.message || 'Unknown error'}`);
+  }
+
+  // Send email notification (don't fail if email fails)
+  try {
+    const inviterProfile = await getUserProfile(user.id);
+    if (inviterProfile) {
+      await sendFriendInviteEmail(
+        toEmail.toLowerCase().trim(),
+        inviterProfile.name,
+        inviterProfile.email
+      );
+    }
+  } catch (emailError) {
+    console.warn('Failed to send friend invite email:', emailError);
+    // Don't throw - friend request was created successfully
   }
 
   return {

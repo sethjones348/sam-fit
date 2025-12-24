@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { getUserProfile, updateUserProfile, UserProfile } from '../services/userService';
 import { getFollowing } from '../services/friendService';
@@ -7,6 +7,7 @@ import { workoutStore } from '../store/workoutStore';
 import { supabase } from '../lib/supabase';
 import { Workout } from '../types';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isWithinInterval, parseISO, startOfWeek } from 'date-fns';
+import { uploadProfilePicture } from '../services/profileImageService';
 
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -18,7 +19,16 @@ export default function ProfilePage() {
     name: '',
     bio: '',
     workoutPrivacy: 'public' as 'public' | 'private',
+    boxName: '',
+    level: '',
+    favoriteMovements: [] as string[],
+    prs: {} as Record<string, string>,
   });
+  const [isUploadingPicture, setIsUploadingPicture] = useState(false);
+  const [newMovementInput, setNewMovementInput] = useState('');
+  const [newPrKey, setNewPrKey] = useState('');
+  const [newPrValue, setNewPrValue] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [friendsCount, setFriendsCount] = useState(0);
   const [weeklyWorkouts, setWeeklyWorkouts] = useState<Workout[]>([]);
   const { workouts, loadWorkouts } = workoutStore();
@@ -39,6 +49,10 @@ export default function ProfilePage() {
             name: userProfile.name,
             bio: userProfile.bio || '',
             workoutPrivacy: userProfile.settings.workoutPrivacy,
+            boxName: userProfile.boxName || '',
+            level: userProfile.level || '',
+            favoriteMovements: userProfile.favoriteMovements || [],
+            prs: userProfile.prs || {},
           });
         }
       } catch (error) {
@@ -150,6 +164,10 @@ export default function ProfilePage() {
       const updated = await updateUserProfile(userId, {
         name: editForm.name,
         bio: editForm.bio || undefined,
+        boxName: editForm.boxName || undefined,
+        level: editForm.level || undefined,
+        favoriteMovements: editForm.favoriteMovements.length > 0 ? editForm.favoriteMovements : undefined,
+        prs: Object.keys(editForm.prs).length > 0 ? editForm.prs : undefined,
         settings: {
           workoutPrivacy: editForm.workoutPrivacy,
           showEmail: profile?.settings?.showEmail || false,
@@ -161,6 +179,72 @@ export default function ProfilePage() {
       console.error('Failed to update profile:', error);
       alert('Failed to update profile');
     }
+  };
+
+  const handlePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file');
+      return;
+    }
+
+    setIsUploadingPicture(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64 = event.target?.result as string;
+        if (base64) {
+          const imageUrl = await uploadProfilePicture(base64, userId);
+          const updated = await updateUserProfile(userId, { picture: imageUrl });
+          setProfile(updated);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Failed to upload profile picture:', error);
+      alert('Failed to upload profile picture');
+    } finally {
+      setIsUploadingPicture(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleAddMovement = () => {
+    if (newMovementInput.trim() && !editForm.favoriteMovements.includes(newMovementInput.trim())) {
+      setEditForm({
+        ...editForm,
+        favoriteMovements: [...editForm.favoriteMovements, newMovementInput.trim()],
+      });
+      setNewMovementInput('');
+    }
+  };
+
+  const handleRemoveMovement = (index: number) => {
+    setEditForm({
+      ...editForm,
+      favoriteMovements: editForm.favoriteMovements.filter((_, i) => i !== index),
+    });
+  };
+
+  const handleAddPr = () => {
+    if (newPrKey.trim() && newPrValue.trim()) {
+      setEditForm({
+        ...editForm,
+        prs: { ...editForm.prs, [newPrKey.trim()]: newPrValue.trim() },
+      });
+      setNewPrKey('');
+      setNewPrValue('');
+    }
+  };
+
+  const handleRemovePr = (key: string) => {
+    const newPrs = { ...editForm.prs };
+    delete newPrs[key];
+    setEditForm({ ...editForm, prs: newPrs });
   };
 
   if (!isAuthenticated) {
@@ -203,19 +287,70 @@ export default function ProfilePage() {
           <div className="px-4 md:px-6 py-6 md:py-8">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-4">
-                {profile.picture ? (
-                  <img
-                    src={profile.picture}
-                    alt={profile.name}
-                    className="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover border-2 border-gray-200"
-                  />
-                ) : (
-                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-cf-red to-cf-red-hover flex items-center justify-center border-2 border-gray-200">
-                    <span className="text-white text-xl md:text-2xl font-bold">
-                      {profile.name?.[0]?.toUpperCase() || '?'}
-                    </span>
-                  </div>
-                )}
+                <div className="relative">
+                  {profile.picture ? (
+                    <img
+                      src={profile.picture}
+                      alt={profile.name}
+                      className="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover border-2 border-gray-200"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-cf-red to-cf-red-hover flex items-center justify-center border-2 border-gray-200">
+                      <span className="text-white text-xl md:text-2xl font-bold">
+                        {profile.name?.[0]?.toUpperCase() || '?'}
+                      </span>
+                    </div>
+                  )}
+                  {isOwnProfile && (
+                    <>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePictureUpload}
+                        className="hidden"
+                        id="profile-picture-file-input"
+                      />
+                      <div className="absolute bottom-0 right-0 flex gap-1">
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isUploadingPicture}
+                          className="bg-cf-red text-white rounded-full p-1.5 shadow-lg hover:bg-cf-red-hover transition-all disabled:opacity-50"
+                          title="Upload photo from gallery"
+                        >
+                          {isUploadingPicture ? (
+                            <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                          ) : (
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          )}
+                        </button>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={handlePictureUpload}
+                          className="hidden"
+                          id="profile-picture-camera-input"
+                        />
+                        <label
+                          htmlFor="profile-picture-camera-input"
+                          className="bg-gray-600 text-white rounded-full p-1.5 shadow-lg hover:bg-gray-700 transition-all cursor-pointer disabled:opacity-50"
+                          title="Take a new photo"
+                        >
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        </label>
+                      </div>
+                    </>
+                  )}
+                </div>
                 <div>
                   {isEditing && isOwnProfile ? (
                     <input
@@ -262,6 +397,135 @@ export default function ProfilePage() {
                     placeholder="Tell us about yourself..."
                   />
                 </div>
+
+                {/* CrossFit Fields */}
+                <div className="border-t border-gray-200 pt-4">
+                  <h3 className="text-lg font-heading font-bold mb-4">CrossFit Info</h3>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold uppercase tracking-wider mb-2">
+                        Box Name
+                      </label>
+                      <input
+                        type="text"
+                        value={editForm.boxName}
+                        onChange={(e) => setEditForm({ ...editForm, boxName: e.target.value })}
+                        className="w-full px-4 py-2 border-2 border-gray-200 rounded focus:border-cf-red outline-none"
+                        placeholder="e.g., CrossFit Downtown"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold uppercase tracking-wider mb-2">
+                        Level
+                      </label>
+                      <select
+                        value={editForm.level}
+                        onChange={(e) => setEditForm({ ...editForm, level: e.target.value })}
+                        className="w-full px-4 py-2 border-2 border-gray-200 rounded focus:border-cf-red outline-none min-h-[44px]"
+                      >
+                        <option value="">Select level</option>
+                        <option value="Beginner">Beginner</option>
+                        <option value="Intermediate">Intermediate</option>
+                        <option value="Advanced">Advanced</option>
+                        <option value="Rx">Rx</option>
+                        <option value="Elite">Elite</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold uppercase tracking-wider mb-2">
+                        Favorite Movements
+                      </label>
+                      <div className="flex gap-2 mb-2">
+                        <input
+                          type="text"
+                          value={newMovementInput}
+                          onChange={(e) => setNewMovementInput(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddMovement();
+                            }
+                          }}
+                          className="flex-1 px-4 py-2 border-2 border-gray-200 rounded focus:border-cf-red outline-none"
+                          placeholder="e.g., Deadlift, Pull-ups"
+                        />
+                        <button
+                          onClick={handleAddMovement}
+                          className="bg-cf-red text-white px-4 py-2 rounded font-semibold uppercase tracking-wider hover:bg-cf-red-hover transition-all"
+                        >
+                          Add
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {editForm.favoriteMovements.map((movement, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm"
+                          >
+                            {movement}
+                            <button
+                              onClick={() => handleRemoveMovement(index)}
+                              className="ml-2 text-red-600 hover:text-red-800"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold uppercase tracking-wider mb-2">
+                        Personal Records (PRs)
+                      </label>
+                      <div className="grid grid-cols-2 gap-2 mb-2">
+                        <input
+                          type="text"
+                          value={newPrKey}
+                          onChange={(e) => setNewPrKey(e.target.value)}
+                          className="px-4 py-2 border-2 border-gray-200 rounded focus:border-cf-red outline-none"
+                          placeholder="Movement (e.g., Deadlift)"
+                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={newPrValue}
+                            onChange={(e) => setNewPrValue(e.target.value)}
+                            className="flex-1 px-4 py-2 border-2 border-gray-200 rounded focus:border-cf-red outline-none"
+                            placeholder="PR (e.g., 315 lbs)"
+                          />
+                          <button
+                            onClick={handleAddPr}
+                            className="bg-cf-red text-white px-4 py-2 rounded font-semibold uppercase tracking-wider hover:bg-cf-red-hover transition-all"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {Object.entries(editForm.prs).map(([key, value]) => (
+                          <div
+                            key={key}
+                            className="flex items-center justify-between bg-gray-50 p-2 rounded"
+                          >
+                            <span className="font-semibold">{key}:</span>
+                            <span className="text-gray-700">{value}</span>
+                            <button
+                              onClick={() => handleRemovePr(key)}
+                              className="text-red-600 hover:text-red-800 ml-2"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-sm font-semibold uppercase tracking-wider mb-2">
                     Workout Privacy
@@ -292,6 +556,44 @@ export default function ProfilePage() {
                 {profile.bio && (
                   <div className="mb-4">
                     <p className="text-sm md:text-base text-gray-700">{profile.bio}</p>
+                  </div>
+                )}
+                {/* Display CrossFit Info */}
+                {(profile.boxName || profile.level || (profile.favoriteMovements && profile.favoriteMovements.length > 0) || (profile.prs && Object.keys(profile.prs).length > 0)) && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <h3 className="text-lg font-heading font-bold mb-3">CrossFit Info</h3>
+                    <div className="space-y-2">
+                      {profile.boxName && (
+                        <div>
+                          <span className="text-sm font-semibold text-gray-600">Box: </span>
+                          <span className="text-sm text-gray-700">{profile.boxName}</span>
+                        </div>
+                      )}
+                      {profile.level && (
+                        <div>
+                          <span className="text-sm font-semibold text-gray-600">Level: </span>
+                          <span className="text-sm text-gray-700">{profile.level}</span>
+                        </div>
+                      )}
+                      {profile.favoriteMovements && profile.favoriteMovements.length > 0 && (
+                        <div>
+                          <span className="text-sm font-semibold text-gray-600">Favorite Movements: </span>
+                          <span className="text-sm text-gray-700">{profile.favoriteMovements.join(', ')}</span>
+                        </div>
+                      )}
+                      {profile.prs && Object.keys(profile.prs).length > 0 && (
+                        <div>
+                          <span className="text-sm font-semibold text-gray-600">PRs: </span>
+                          <div className="mt-1 space-y-1">
+                            {Object.entries(profile.prs).map(([key, value]) => (
+                              <div key={key} className="text-sm text-gray-700">
+                                <span className="font-semibold">{key}:</span> {value}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </>

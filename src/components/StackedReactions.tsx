@@ -96,7 +96,7 @@ export default function StackedReactions({ workoutId, count }: StackedReactionsP
         )}
       </div>
       <span className="ml-2 text-sm text-gray-600">
-        {count === 1 ? '1 fist' : `${count} fists`}
+        {count === 1 ? '1 fist bump' : `${count} fist bumps`}
       </span>
 
       {/* Tooltip showing all users who reacted */}

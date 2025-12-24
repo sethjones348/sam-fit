@@ -126,11 +126,23 @@ export default function WorkoutEditor({
   };
 
   const parseTimeToSeconds = (timeStr: string): number => {
-    const parts = timeStr.split(':');
+    if (!timeStr || !timeStr.trim()) return 0;
+    
+    // Handle MM:SS format
+    const parts = timeStr.trim().split(':');
     if (parts.length === 2) {
-      return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+      const minutes = parseInt(parts[0], 10) || 0;
+      const seconds = parseInt(parts[1], 10) || 0;
+      return minutes * 60 + seconds;
     }
-    return parseInt(timeStr) || 0;
+    
+    // Handle just seconds (single number)
+    const secondsOnly = parseInt(timeStr.trim(), 10);
+    if (!isNaN(secondsOnly)) {
+      return secondsOnly;
+    }
+    
+    return 0;
   };
 
   const formatSecondsToTime = (seconds: number): string => {
