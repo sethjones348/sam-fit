@@ -62,8 +62,10 @@ Extraction Guidelines:
   * If time cap is hit in a time-based workout, the score should be type "reps" (NOT "rounds")
   * Calculate totalReps from rounds + reps into next round
 - Create workout title based on workout type and abbreviated movements
-- Generate an encouraging, short description (1-2 sentences) that makes people feel good about completing the workout
-  * Examples: "A challenging AMRAP that tests your endurance!", "A fast-paced workout that builds power and speed!", "A strength-focused session that will push your limits!"
+- Generate a casual, enthusiastic one-liner description in "gym bro" style - short, hype, and motivating
+  * Tone: Casual, enthusiastic, slightly aggressive, uses gym slang
+  * Style: One sentence max, sounds like what someone would say after crushing a workout
+  * Examples: "Brutal AMRAP that'll gas you!", "Savage chipper that tests everything!", "Heavy grind session for the beasts!", "Fast and nasty - prepare to suffer!", "Pure strength work, leave your ego at the door!"
 - Note: Raw text will be generated from the structured workout and score elements, so it does not need to be extracted
 
 Workout Elements:
@@ -110,13 +112,13 @@ Output Requirements:
 - All fields are optional except title (use empty string if unknown)
 - Times in metadata should be converted to seconds (CRITICAL: "1:13" = 73 seconds, NOT 113 seconds)
 - Movements should be normalized (capitalize, clean spacing)
-- Generate an encouraging description (1-2 sentences) that makes people feel good about the workout
+- Generate a casual, enthusiastic one-liner description in "gym bro" style - short, hype, and motivating (one sentence max)
 - Confidence: 0-1 score of extraction certainty
 
 JSON Schema:
 {
   "title": string,
-  "description"?: string,
+  "description"?: string,  // Casual, enthusiastic one-liner in "gym bro" style (one sentence max, e.g., "Brutal AMRAP that'll gas you!", "Savage chipper that tests everything!")
   "workout": [
     {
       "type": "movement" | "descriptive",
