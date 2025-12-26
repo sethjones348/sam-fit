@@ -138,8 +138,7 @@ function getGridColumn(line: GridLine, index: number, fallback: string = ''): st
  */
 async function extractTextWithGemini(imageBase64: string): Promise<OCRData> {
     // Check which provider to use
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const useOpenAI = process.env.USE_OPENAI === 'true' || (typeof window !== 'undefined' && (globalThis as any).import?.meta?.env?.USE_OPENAI === 'true');
+    const useOpenAI = import.meta.env?.USE_OPENAI === 'true';
 
     if (useOpenAI) {
         return extractTextWithOpenAI(imageBase64);
@@ -152,8 +151,7 @@ async function extractTextWithGemini(imageBase64: string): Promise<OCRData> {
  * Extract text using OpenAI GPT-4o-mini
  */
 async function extractTextWithOpenAI(imageBase64: string): Promise<OCRData> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const OPENAI_API_KEY = process.env.VITE_OPENAI_API_KEY || (typeof window !== 'undefined' && (globalThis as any).import?.meta?.env?.VITE_OPENAI_API_KEY ? (globalThis as any).import.meta.env.VITE_OPENAI_API_KEY : null);
+    const OPENAI_API_KEY = import.meta.env?.VITE_OPENAI_API_KEY;
 
     if (!OPENAI_API_KEY) {
         throw new Error('VITE_OPENAI_API_KEY is required when USE_OPENAI=true');
@@ -337,8 +335,7 @@ Output only the extracted text with pipes added.`;
  * Extract text using Gemini API
  */
 async function extractTextWithGeminiAPI(imageBase64: string): Promise<OCRData> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const GEMINI_API_KEY = process.env.VITE_GEMINI_API_KEY || (typeof window !== 'undefined' && (globalThis as any).import?.meta?.env?.VITE_GEMINI_API_KEY ? (globalThis as any).import.meta.env.VITE_GEMINI_API_KEY : null);
+    const GEMINI_API_KEY = import.meta.env?.VITE_GEMINI_API_KEY;
 
     if (!GEMINI_API_KEY) {
         throw new Error('VITE_GEMINI_API_KEY is required for text extraction');
@@ -438,8 +435,7 @@ Output only the extracted text with pipes added.`;
     // Try to get available models
     let availableModels: string[] = [];
     try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const apiKey = process.env.VITE_GEMINI_API_KEY || (typeof window !== 'undefined' && (globalThis as any).import?.meta?.env?.VITE_GEMINI_API_KEY ? (globalThis as any).import.meta.env.VITE_GEMINI_API_KEY : null);
+        const apiKey = import.meta.env?.VITE_GEMINI_API_KEY;
         if (apiKey) {
             const response = await fetch(
                 `https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`

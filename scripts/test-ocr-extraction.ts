@@ -9,11 +9,27 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { config } from 'dotenv';
-import { workoutExtractorAlgorithmic } from '../src/services/workoutExtractorAlgorithmic';
 
 // Load environment variables
 config();
 config({ path: '.env.local' });
+
+// Populate import.meta.env for Node.js test environment
+// In Vite, this is done automatically, but in Node.js we need to set it up
+if (typeof import.meta !== 'undefined') {
+    // Create import.meta.env if it doesn't exist
+    if (!(import.meta as any).env) {
+        (import.meta as any).env = {};
+    }
+    // Copy process.env to import.meta.env for variables that start with VITE_ or are USE_OPENAI
+    Object.keys(process.env).forEach(key => {
+        if (key.startsWith('VITE_') || key === 'USE_OPENAI') {
+            (import.meta as any).env[key] = process.env[key];
+        }
+    });
+}
+
+import { workoutExtractorAlgorithmic } from '../src/services/workoutExtractorAlgorithmic';
 
 function parseGeminiResponse(response: string): any {
     // This function is kept for compatibility but won't be used
