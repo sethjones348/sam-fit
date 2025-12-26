@@ -21,7 +21,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 import { WorkoutExtraction, WorkoutElement, ScoreElement, ScoreName } from '../types';
 import { parseTimeToSeconds, formatSecondsToTime } from '../utils/timeUtils';
-import { normalizeMovementName } from '../utils/movementNormalizer';
+import { validateAndNormalizeMovement } from '../utils/movementNormalizer';
 
 interface OCRData {
     text: string;
@@ -30,6 +30,7 @@ interface OCRData {
         confidence: number;
     }>;
     lines: string[]; // Just the text lines - we use grid structure for parsing, not spatial positions
+    rawGeminiText?: string; // Raw text from Gemini API before processing
 }
 
 // Removed LayoutAnalysis - we parse all lines and let parsers filter themselves
@@ -130,6 +131,39 @@ function getGridColumn(line: GridLine, index: number, fallback: string = ''): st
 // 3. If compression fails, we pass HEIC through to Gemini anyway
 
 /**
+ * Get environment variable - works in both Vite (browser) and Jest (Node)
+ * In browser: uses import.meta.env (Vite) - Babel will transform this in Jest
+ * In Jest: Babel transforms import.meta.env to globalThis.import.meta.env
+ */
+function getEnvVar(key: string): string | undefined {
+    // Try globalThis first (Jest environment - set up in jest.setup.js)
+    // @ts-ignore - globalThis.import is set up in jest.setup.js for Jest environment
+    if (typeof globalThis !== 'undefined' && (globalThis as any).import?.meta?.env) {
+        // @ts-ignore
+        return (globalThis as any).import.meta.env[key];
+    }
+    // Browser/Vite environment - use import.meta.env directly
+    // This will be transformed by Babel in Jest, but if Babel doesn't transform it,
+    // we need to catch the error
+    try {
+        // @ts-ignore - import.meta is available in Vite, transformed by Babel in Jest
+        // eslint-disable-next-line no-restricted-globals
+        const env = import.meta.env;
+        if (env) {
+            return env[key];
+        }
+    } catch (e) {
+        // In Jest, if Babel didn't transform it, this will fail
+        // Fall back to process.env
+    }
+    // Fallback to process.env for Node/Jest
+    if (typeof process !== 'undefined' && process.env) {
+        return process.env[key];
+    }
+    return undefined;
+}
+
+/**
  * Extract text from image using either OpenAI or Gemini (text extraction only)
  * 
  * Uses OpenAI GPT-4o-mini if USE_OPENAI=true, otherwise uses Gemini.
@@ -138,7 +172,7 @@ function getGridColumn(line: GridLine, index: number, fallback: string = ''): st
  */
 async function extractTextWithGemini(imageBase64: string): Promise<OCRData> {
     // Check which provider to use
-    const useOpenAI = import.meta.env?.USE_OPENAI === 'true';
+    const useOpenAI = getEnvVar('USE_OPENAI') === 'true';
 
     if (useOpenAI) {
         return extractTextWithOpenAI(imageBase64);
@@ -151,7 +185,7 @@ async function extractTextWithGemini(imageBase64: string): Promise<OCRData> {
  * Extract text using OpenAI GPT-4o-mini
  */
 async function extractTextWithOpenAI(imageBase64: string): Promise<OCRData> {
-    const OPENAI_API_KEY = import.meta.env?.VITE_OPENAI_API_KEY;
+    const OPENAI_API_KEY = getEnvVar('VITE_OPENAI_API_KEY');
 
     if (!OPENAI_API_KEY) {
         throw new Error('VITE_OPENAI_API_KEY is required when USE_OPENAI=true');
@@ -174,7 +208,7 @@ async function extractTextWithOpenAI(imageBase64: string): Promise<OCRData> {
         }
     }
 
-    // Calculate approximate size from base64 string (base64 is ~33% larger than binary)
+    // Calculate approximate size from base64 string (base64 is  ~33% larger than binary)
     const originalSize = Math.floor(base64Data.length * 3 / 4);
     console.log(`  [Image Processing] Original size: ${(originalSize / 1024 / 1024).toFixed(2)}MB`);
 
@@ -226,7 +260,7 @@ async function extractTextWithOpenAI(imageBase64: string): Promise<OCRData> {
 Return the text exactly as written, preserving original line breaks and order.
 
 For each line:
-- Insert vertical pipes (|) between logical text groups on that line.
+- Insert vertical pipes (|) between logical text groups (e.g., number | word | number ) on that line.
 - Do not merge or split lines.
 - Do not infer meaning or reword text.
 
@@ -335,7 +369,7 @@ Output only the extracted text with pipes added.`;
  * Extract text using Gemini API
  */
 async function extractTextWithGeminiAPI(imageBase64: string): Promise<OCRData> {
-    const GEMINI_API_KEY = import.meta.env?.VITE_GEMINI_API_KEY;
+    const GEMINI_API_KEY = getEnvVar('VITE_GEMINI_API_KEY');
 
     if (!GEMINI_API_KEY) {
         throw new Error('VITE_GEMINI_API_KEY is required for text extraction');
@@ -435,7 +469,7 @@ Output only the extracted text with pipes added.`;
     // Try to get available models
     let availableModels: string[] = [];
     try {
-        const apiKey = import.meta.env?.VITE_GEMINI_API_KEY;
+        const apiKey = getEnvVar('VITE_GEMINI_API_KEY');
         if (apiKey) {
             const response = await fetch(
                 `https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`
@@ -581,6 +615,7 @@ function processExtractedText(rawText: string): OCRData {
             text: textLines.join('\n'),
             words,
             lines: textLines, // Just the text lines
+            rawGeminiText: rawText, // Store raw text from Gemini/OpenAI for debugging
         };
     } catch (error) {
         // This catch block is for parsing errors after successful text extraction
@@ -807,6 +842,17 @@ function parseMovements(grid: GridData): WorkoutElement[] {
             // Has "rounds + reps" pattern - definitely a score
             continue;
         }
+        // Skip numbered score lines (e.g., "1. | 18 |", "2. | 17 |")
+        // Pattern: number followed by period, then a number
+        if (gridLine.length >= 2) {
+            const col0 = getGridColumn(gridLine, 0);
+            const col1 = getGridColumn(gridLine, 1);
+            // Check if col0 is "N." (number with period) and col1 is a number
+            if (col0.match(/^\d+\.$/) && col1 && !isNaN(parseInt(col1, 10))) {
+                // This is a numbered score line, not a movement
+                continue;
+            }
+        }
         // Skip lines with "@" symbol that indicate time cap results (e.g., "9 rds | @ | 11min")
         // Pattern: number + "rds" + "@" + time = rounds completed at time cap
         if (trimmed.match(/\d+\s*rds?\s*@/i) ||
@@ -951,8 +997,15 @@ function parseMovements(grid: GridData): WorkoutElement[] {
                         unit = null;
                     } else {
                         // Standard format: amount | exercise | unit
+                        // Handle special cases:
+                        // - "25' | Of Lunge | 50lb" -> amount: "25'", exercise: "Lunge", unit: "50lb"
+                        // - "Max | Burpees |" -> amount: "Max", exercise: "Burpees", unit: null
                         amount = col0;
+                        // If exercise starts with "Of ", remove it (e.g., "Of Lunge" -> "Lunge")
                         exercise = col1;
+                        if (exercise && exercise.match(/^Of\s+/i)) {
+                            exercise = exercise.replace(/^Of\s+/i, '').trim();
+                        }
                         unit = col2 || null;
                     }
                 }
@@ -1004,8 +1057,14 @@ function parseMovements(grid: GridData): WorkoutElement[] {
             }
 
             // Validate amount format
-            // Supports: "21", "2-4-6-8", "10-20-30-20-10", "5x5", "5 x 5"
-            if (amount.match(/^(\d+(?:-\d+)*|(?:\d+x\d+)|(?:\d+\s*x\s*\d+))$/)) {
+            // Supports: "21", "2-4-6-8", "10-20-30-20-10", "5x5", "5 x 5", "25'", "Max", etc.
+            // Also allow amounts with quotes (like "25'") and special keywords (like "Max")
+            // Also allow wattage for Bike (e.g., "200W", "200w")
+            const isValidAmount = amount.match(/^(\d+(?:-\d+)*|(?:\d+x\d+)|(?:\d+\s*x\s*\d+))$/) ||
+                amount.match(/^\d+['"]$/) || // Amounts with quotes like "25'"
+                amount.match(/^\d+[Ww]$/) || // Wattage for Bike (e.g., "200W")
+                amount.match(/^(max|min|as many|as much|unlimited)$/i); // Special keywords
+            if (isValidAmount) {
                 // Check for descriptive elements in grid format
                 const keyword = amount.toLowerCase();
                 if (keyword.match(/^(rest|repeat|then|and)$/)) {
@@ -1028,13 +1087,60 @@ function parseMovements(grid: GridData): WorkoutElement[] {
 
                 // It's a movement - ensure exercise is not empty and doesn't contain pipes
                 if (exercise && exercise.trim().length > 0 && !exercise.includes('|')) {
-                    const normalized = normalizeMovementName(exercise);
+                    // Special handling for Box Jump - extract inches from exercise or surrounding columns BEFORE validation
+                    let finalUnit = unit;
+                    let exerciseToValidate = exercise;
+
+                    // Check if this looks like a Box Jump movement (Bjo, BJO, Box Jump, etc.)
+                    const isBoxJumpLike = exercise.match(/\b(bjo|box\s*jump|boxjump)\b/i);
+                    if (isBoxJumpLike) {
+                        // Look for inches in the exercise column (e.g., "BJO 24\"")
+                        const inchesMatch = exercise.match(/(\d+[""])/i);
+                        if (inchesMatch) {
+                            finalUnit = inchesMatch[1];
+                            // Remove the inches from exercise name before validation
+                            exerciseToValidate = exercise.replace(/\s*\d+[""]/i, '').trim();
+                        } else if (!finalUnit) {
+                            // Look in surrounding columns for inches
+                            for (let colIdx = 0; colIdx < gridLine.length; colIdx++) {
+                                const col = getGridColumn(gridLine, colIdx);
+                                const colInchesMatch = col && col.match(/(\d+[""])/i);
+                                if (colInchesMatch) {
+                                    finalUnit = colInchesMatch[1];
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    // Special handling for Bike - extract wattage from amount column BEFORE validation
+                    let finalAmount = amount.trim();
+                    const isBikeLike = exercise.match(/\b(bike|bike\s*erg|bikeerg)\b/i);
+                    if (isBikeLike) {
+                        // Look for wattage in the amount column (e.g., "200W", "200w")
+                        const wattageMatch = amount.match(/(\d+[Ww])/);
+                        if (wattageMatch) {
+                            finalAmount = wattageMatch[1].toUpperCase();
+                        } else {
+                            // Also check if wattage is in the exercise name (e.g., "200W Bike erg")
+                            const exerciseWattageMatch = exercise.match(/(\d+[Ww])/);
+                            if (exerciseWattageMatch) {
+                                finalAmount = exerciseWattageMatch[1].toUpperCase();
+                                // Remove wattage from exercise name
+                                exerciseToValidate = exercise.replace(/\s*\d+[Ww]/i, '').trim();
+                            }
+                        }
+                    }
+
+                    // Now validate the cleaned exercise name
+                    const validated = validateAndNormalizeMovement(exerciseToValidate);
+
                     elements.push({
                         type: 'movement',
                         movement: {
-                            amount: amount.trim(),
-                            exercise: normalized.normalized,
-                            unit: unit || null,
+                            amount: finalAmount,
+                            exercise: validated.normalized,
+                            unit: finalUnit || null,
                         },
                     });
                     continue;
@@ -1088,13 +1194,13 @@ function parseMovements(grid: GridData): WorkoutElement[] {
                     }
                 }
 
-                const normalized = normalizeMovementName(exerciseName);
+                const validated = validateAndNormalizeMovement(exerciseName);
 
                 elements.push({
                     type: 'movement',
                     movement: {
                         amount: amount.trim(),
-                        exercise: normalized.normalized,
+                        exercise: validated.normalized,
                         unit: unitValue,
                     },
                 });
@@ -1106,12 +1212,12 @@ function parseMovements(grid: GridData): WorkoutElement[] {
         // If no pattern matched, try to extract as movement without amount (fallback)
         if (!matched && trimmed.length > 3) {
             // Might be just an exercise name (rare, but handle it)
-            const normalized = normalizeMovementName(trimmed);
+            const validated = validateAndNormalizeMovement(trimmed);
             elements.push({
                 type: 'movement',
                 movement: {
                     amount: '1',
-                    exercise: normalized.normalized,
+                    exercise: validated.normalized,
                     unit: null,
                 },
             });
@@ -1228,8 +1334,12 @@ function parseScores(grid: GridData, timeCap?: number): ScoreElement[] {
             const col2 = getGridColumn(gridLine, 2);
 
             // Check for standard format: amount | exercise | unit
-            // (e.g., "30 | DU", "20 | WB", "200W | Bike erg")
-            if (col0.match(/^\d+[a-zA-Z]*$/) && col1 &&
+            // (e.g., "30 | DU", "20 | WB", "200W | Bike erg", "25' | Of Lunge | 50lb")
+            // Amount can be: digits, digits with letters, digits with quotes (like "25'"), or special keywords (like "Max")
+            const isAmountPattern = col0.match(/^\d+[a-zA-Z]*$/) || // Standard: "30", "200W"
+                col0.match(/^\d+['"]$/) || // With quotes: "25'", "10\""
+                col0.match(/^(max|min|as many|as much|unlimited)$/i); // Special keywords
+            if (isAmountPattern && col1 &&
                 !col1.match(/^\d+$/) &&
                 col1 !== '+' &&
                 !col1.match(/^\d{1,2}:\d{2}$/) &&
@@ -1247,6 +1357,42 @@ function parseScores(grid: GridData, timeCap?: number): ScoreElement[] {
                 col1 && col1.match(/^(cal|ca|lbs|kg|min|sec)$/i) &&
                 col2 && col2.length > 1 && !col2.match(/^\d+$/) && !col2.match(/^\d{1,2}:\d{2}$/)) {
                 // This is definitely a movement line (amount | unit | exercise), not a score
+                continue;
+            }
+        }
+
+        // Check for numbered score lines (e.g., "1. | 18 |", "2. | 17 |")
+        // Pattern: number followed by period, then a number
+        if (gridLine.length >= 2) {
+            const col0 = getGridColumn(gridLine, 0);
+            const col1 = getGridColumn(gridLine, 1);
+            // Check if col0 is "N." (number with period) and col1 is a number
+            const numberedScoreMatch = col0.match(/^(\d+)\.$/);
+            if (numberedScoreMatch && col1 && !isNaN(parseInt(col1, 10))) {
+                const roundNum = parseInt(numberedScoreMatch[1], 10);
+                const scoreValue = parseInt(col1, 10);
+                // Determine if it's reps or time based on the value
+                // If it's a large number (> 1000) or matches time pattern, it might be time
+                const timeInSeconds = parseTimeToSeconds(col1);
+                if (timeInSeconds !== null && timeInSeconds < 3600 && scoreValue >= 60) {
+                    // It's a time
+                    scores.push({
+                        name: `Round ${roundNum}` as ScoreName,
+                        type: 'time',
+                        value: formatSecondsToTime(timeInSeconds),
+                        metadata: { timeInSeconds },
+                    });
+                } else {
+                    // It's reps
+                    scores.push({
+                        name: `Round ${roundNum}` as ScoreName,
+                        type: 'reps',
+                        value: String(scoreValue),
+                        metadata: {
+                            totalReps: scoreValue,
+                        },
+                    });
+                }
                 continue;
             }
         }
@@ -1811,7 +1957,7 @@ export function parseWorkoutFromRawText(rawText: string): WorkoutExtraction {
 /**
  * Internal function to parse from OCR data
  */
-function parseFromOCRData(ocrData: OCRData): WorkoutExtraction {
+function parseFromOCRData(ocrData: OCRData, rawGeminiText?: string): WorkoutExtraction {
     const parsingStartTime = Date.now();
     console.log(`  [Parsing] Starting parsing of ${ocrData.lines.length} lines...`);
 
@@ -1872,6 +2018,7 @@ function parseFromOCRData(ocrData: OCRData): WorkoutExtraction {
         score: scores,
         confidence,
         privacy: 'public',
+        rawGeminiText: rawGeminiText || ocrData.rawGeminiText, // Store raw Gemini text for debugging
     };
 }
 
@@ -1882,7 +2029,7 @@ export const workoutExtractorAlgorithmic = {
     async extract(imageBase64: string): Promise<WorkoutExtraction> {
         // Step 1: Text extraction using Gemini (OCR-like functionality)
         const ocrData = await extractTextWithGemini(imageBase64);
-        return parseFromOCRData(ocrData);
+        return parseFromOCRData(ocrData, ocrData.rawGeminiText);
     },
 
     /**
@@ -1898,7 +2045,7 @@ export const workoutExtractorAlgorithmic = {
      */
     async extractWithRawText(imageBase64: string): Promise<{ extraction: WorkoutExtraction; rawText: string }> {
         const ocrData = await extractTextWithGemini(imageBase64);
-        const extraction = parseFromOCRData(ocrData);
+        const extraction = parseFromOCRData(ocrData, ocrData.rawGeminiText);
         return { extraction, rawText: ocrData.text };
     },
 };

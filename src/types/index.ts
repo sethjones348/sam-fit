@@ -75,6 +75,7 @@ export interface WorkoutExtraction {
   date?: string; // ISO-8601 date string
   confidence: number; // 0-1 extraction certainty
   privacy?: 'public' | 'private'; // Privacy setting, defaults to 'public'
+  rawGeminiText?: string; // Raw text extracted from Gemini API (for debugging and iteration)
 }
 
 // ============================================================================
@@ -101,6 +102,7 @@ export interface Workout {
   metadata: {
     confidence?: number;
     notes?: string;
+    rawGeminiText?: string; // Raw text from Gemini API (for debugging and iteration)
   };
   // New structure fields (optional for backward compatibility)
   title?: string; // New structure title

@@ -88,6 +88,14 @@ const MOVEMENT_ALIASES: Record<string, string[]> = {
     'backsquats',
     'bs',
   ],
+  'Air Squat': [
+    'air squat',
+    'airsquat',
+    'air squats',
+    'airsquats',
+    'bodyweight squat',
+    'bodyweight squats',
+  ],
   'Front Squat': [
     'front squat',
     'frontsquat',
@@ -118,6 +126,14 @@ const MOVEMENT_ALIASES: Record<string, string[]> = {
   'Clean': [
     'clean',
     'cleans',
+  ],
+  'Clean & Jerk': [
+    'clean & jerk',
+    'clean and jerk',
+    'clean&jerk',
+    'cleanandjerk',
+    'c&j',
+    'c and j',
   ],
   'Power Clean': [
     'power clean',
@@ -151,6 +167,11 @@ const MOVEMENT_ALIASES: Record<string, string[]> = {
     'muscleups',
     'muscle ups',
     'mu',
+    'rmu',
+    'r.m.u.',
+    'ring muscle-up',
+    'ring muscleup',
+    'ring muscle up',
   ],
   'Toes-to-Bar': [
     'toes-to-bar',
@@ -171,6 +192,22 @@ const MOVEMENT_ALIASES: Record<string, string[]> = {
     'handstand pushup',
     'handstand push-ups',
     'handstand pushups',
+  ],
+  'Strict Handstand Push-up': [
+    'strict handstand push-up',
+    'strict hspu',
+    'strict handstand pushup',
+    'strict handstand push-ups',
+    'strict handstand pushups',
+    'strict hspu',
+  ],
+  'Kipping Handstand Push-up': [
+    'kipping handstand push-up',
+    'kipping hspu',
+    'kipping handstand pushup',
+    'kipping handstand push-ups',
+    'kipping handstand pushups',
+    'kipping hspu',
   ],
   'Burpee': [
     'burpee',
@@ -210,6 +247,10 @@ const MOVEMENT_ALIASES: Record<string, string[]> = {
     'row',
     'rowing',
     'erg',
+    'cal row',
+    'calorie row',
+    'cal rowing',
+    'cal',
   ],
   'Bike': [
     'bike',
@@ -217,6 +258,9 @@ const MOVEMENT_ALIASES: Record<string, string[]> = {
     'assault bike',
     'assaultbike',
     'ab',
+    'bike erg',
+    'bikeerg',
+    '200w bike erg',
   ],
   'Run': [
     'run',
@@ -305,5 +349,177 @@ export function getMovementAliases(standardName: string): string[] {
  */
 export function getAllStandardMovements(): string[] {
   return Object.keys(MOVEMENT_ALIASES);
+}
+
+/**
+ * Simple Levenshtein distance for fuzzy matching
+ */
+function levenshteinDistance(str1: string, str2: string): number {
+  const matrix: number[][] = [];
+  const len1 = str1.length;
+  const len2 = str2.length;
+
+  if (len1 === 0) return len2;
+  if (len2 === 0) return len1;
+
+  for (let i = 0; i <= len2; i++) {
+    matrix[i] = [i];
+  }
+
+  for (let j = 0; j <= len1; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= len2; i++) {
+    for (let j = 1; j <= len1; j++) {
+      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+
+  return matrix[len2][len1];
+}
+
+/**
+ * Find the closest matching standard movement using fuzzy matching
+ */
+function findClosestMovement(input: string): string | null {
+  const standardMovements = getAllStandardMovements();
+  const inputLower = input.toLowerCase();
+  
+  let bestMatch: string | null = null;
+  let bestDistance = Infinity;
+  let bestRatio = 0;
+
+  for (const standard of standardMovements) {
+    const standardLower = standard.toLowerCase();
+    
+    // Exact match (case-insensitive)
+    if (standardLower === inputLower) {
+      return standard;
+    }
+
+    // Check if input is contained in standard or vice versa
+    if (standardLower.includes(inputLower) || inputLower.includes(standardLower)) {
+      const ratio = Math.min(inputLower.length, standardLower.length) / Math.max(inputLower.length, standardLower.length);
+      if (ratio > bestRatio) {
+        bestRatio = ratio;
+        bestMatch = standard;
+      }
+    }
+
+    // Calculate Levenshtein distance
+    const distance = levenshteinDistance(inputLower, standardLower);
+    const maxLen = Math.max(inputLower.length, standardLower.length);
+    const ratio = 1 - (distance / maxLen);
+
+    // Prefer matches with high similarity (ratio > 0.7) and shorter distance
+    if (ratio > 0.7 && (ratio > bestRatio || (ratio === bestRatio && distance < bestDistance))) {
+      bestDistance = distance;
+      bestRatio = ratio;
+      bestMatch = standard;
+    }
+  }
+
+  // Also check aliases
+  for (const [standard, aliases] of Object.entries(MOVEMENT_ALIASES)) {
+    for (const alias of aliases) {
+      const aliasLower = alias.toLowerCase();
+      
+      if (aliasLower === inputLower) {
+        return standard;
+      }
+
+      if (aliasLower.includes(inputLower) || inputLower.includes(aliasLower)) {
+        const ratio = Math.min(inputLower.length, aliasLower.length) / Math.max(inputLower.length, aliasLower.length);
+        if (ratio > bestRatio) {
+          bestRatio = ratio;
+          bestMatch = standard;
+        }
+      }
+
+      const distance = levenshteinDistance(inputLower, aliasLower);
+      const maxLen = Math.max(inputLower.length, aliasLower.length);
+      const ratio = 1 - (distance / maxLen);
+
+      if (ratio > 0.7 && (ratio > bestRatio || (ratio === bestRatio && distance < bestDistance))) {
+        bestDistance = distance;
+        bestRatio = ratio;
+        bestMatch = standard;
+      }
+    }
+  }
+
+  return bestMatch;
+}
+
+/**
+ * Validate and normalize a parsed movement name
+ * 
+ * This method:
+ * 1. Normalizes the movement name
+ * 2. Checks if it matches a standard movement
+ * 3. If not found, attempts fuzzy matching to find the closest standard movement
+ * 
+ * @param parsedMovement - The movement name parsed from text extraction
+ * @returns Object with validated normalized movement name, original, and whether it was matched/validated
+ */
+export function validateAndNormalizeMovement(parsedMovement: string): {
+  normalized: string;
+  original: string;
+  isValid: boolean;
+  wasMatched: boolean;
+} {
+  if (!parsedMovement || !parsedMovement.trim()) {
+    return {
+      normalized: '',
+      original: parsedMovement || '',
+      isValid: false,
+      wasMatched: false,
+    };
+  }
+
+  // First, normalize the movement
+  const normalized = normalizeMovementName(parsedMovement);
+  
+  // Check if the normalized name is in our standard movements list
+  const standardMovements = getAllStandardMovements();
+  const isStandardMovement = standardMovements.includes(normalized.normalized);
+
+  if (isStandardMovement) {
+    return {
+      normalized: normalized.normalized,
+      original: normalized.original,
+      isValid: true,
+      wasMatched: true,
+    };
+  }
+
+  // Not a standard movement - try fuzzy matching
+  const closestMatch = findClosestMovement(normalized.normalized);
+  
+  if (closestMatch) {
+    return {
+      normalized: closestMatch,
+      original: normalized.original,
+      isValid: true,
+      wasMatched: true,
+    };
+  }
+
+  // No match found - return normalized version but mark as not validated
+  return {
+    normalized: normalized.normalized,
+    original: normalized.original,
+    isValid: false,
+    wasMatched: false,
+  };
 }
 

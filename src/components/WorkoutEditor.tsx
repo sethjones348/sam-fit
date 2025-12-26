@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { WorkoutExtraction, WorkoutElement, ScoreElement, ScoreName } from '../types';
-import { normalizeMovementName, getAllStandardMovements } from '../utils/movementNormalizer';
+import { getAllStandardMovements, validateAndNormalizeMovement } from '../utils/movementNormalizer';
 import { formatSecondsToTime, parseTimeToSeconds } from '../utils/timeUtils';
 import TimePicker from './TimePicker';
 
@@ -94,19 +94,18 @@ export default function WorkoutEditor({
   };
 
   const handleUpdateMovement = (index: number, amount: string, exercise: string, unit: string | null) => {
-    if (exercise.trim()) {
-      const normalized = normalizeMovementName(exercise.trim());
-      const newWorkout = [...formData.workout];
-      newWorkout[index] = {
-        type: 'movement',
-        movement: {
-          amount: amount.trim() || 0,
-          exercise: normalized.normalized,
-          unit: unit?.trim() || null,
-        },
-      };
-      setFormData({ ...formData, workout: newWorkout });
-    }
+    // Validate and normalize the exercise
+    const validated = validateAndNormalizeMovement(exercise.trim());
+    const newWorkout = [...formData.workout];
+    newWorkout[index] = {
+      type: 'movement',
+      movement: {
+        amount: amount.trim() || 0,
+        exercise: validated.normalized,
+        unit: unit?.trim() || null,
+      },
+    };
+    setFormData({ ...formData, workout: newWorkout });
   };
 
   const handleUpdateDescriptive = (index: number, text: string, type: string) => {
@@ -371,32 +370,18 @@ export default function WorkoutEditor({
                       placeholder="Amount"
                       className="w-full px-2 py-1 border border-gray-300 rounded focus:border-cf-red outline-none text-sm min-h-[44px]"
                     />
-                    <div className="relative">
-                      <input
-                        type="text"
-                        list={`exercise-list-${index}`}
-                        value={element.movement.exercise}
-                        onChange={(e) => handleUpdateMovement(index, String(element.movement!.amount || ''), e.target.value, element.movement!.unit || null)}
-                        onBlur={(e) => {
-                          const normalized = normalizeMovementName(e.target.value);
-                          if (normalized.normalized && normalized.normalized !== e.target.value) {
-                            handleUpdateMovement(index, String(element.movement!.amount || ''), normalized.normalized, element.movement!.unit || null);
-                          }
-                        }}
-                        placeholder="Exercise"
-                        className="w-full px-2 py-1 border border-gray-300 rounded focus:border-cf-red outline-none text-sm min-h-[44px] pr-8"
-                      />
-                      <datalist id={`exercise-list-${index}`}>
-                        {getAllStandardMovements().map((movement) => (
-                          <option key={movement} value={movement} />
-                        ))}
-                      </datalist>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
-                    </div>
+                    <select
+                      value={element.movement.exercise}
+                      onChange={(e) => handleUpdateMovement(index, String(element.movement!.amount || ''), e.target.value, element.movement!.unit || null)}
+                      className="w-full px-2 py-1 border border-gray-300 rounded focus:border-cf-red outline-none text-sm min-h-[44px] bg-white"
+                    >
+                      <option value="">Select exercise</option>
+                      {getAllStandardMovements().map((movement) => (
+                        <option key={movement} value={movement}>
+                          {movement}
+                        </option>
+                      ))}
+                    </select>
                     <div className="flex gap-2">
                       <input
                         type="text"

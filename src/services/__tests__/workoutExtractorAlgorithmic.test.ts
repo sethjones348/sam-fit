@@ -193,8 +193,8 @@ describe('workoutExtractorAlgorithmic', () => {
                             type: 'movement',
                             movement: {
                                 amount: '10',
-                                exercise: 'Bjo 24"',
-                                unit: null,
+                                exercise: 'Box Jump',
+                                unit: "24\"",
                             },
                         },
                         {
@@ -217,8 +217,8 @@ describe('workoutExtractorAlgorithmic', () => {
                             type: 'movement',
                             movement: {
                                 amount: '20',
-                                exercise: 'Bjo 24"',
-                                unit: null,
+                                exercise: 'Box Jump',
+                                unit: "24\"",
                             },
                         },
                         {
@@ -241,8 +241,8 @@ describe('workoutExtractorAlgorithmic', () => {
                             type: 'movement',
                             movement: {
                                 amount: '30',
-                                exercise: 'Bjo 24"',
-                                unit: null,
+                                exercise: 'Box Jump',
+                                unit: "24\"",
                             },
                         },
                     ],
@@ -401,7 +401,7 @@ Cleans | 185
                             type: 'movement',
                             movement: {
                                 amount: '10',
-                                exercise: 'Strict Hspu',
+                                exercise: 'Strict Handstand Push-up',
                                 unit: null,
                             },
                         },
@@ -409,7 +409,7 @@ Cleans | 185
                             type: 'movement',
                             movement: {
                                 amount: '1',
-                                exercise: '30/24 Cal Echo 13:09',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -417,7 +417,7 @@ Cleans | 185
                             type: 'movement',
                             movement: {
                                 amount: '15',
-                                exercise: 'Kipping Hspu',
+                                exercise: 'Kipping Handstand Push-up',
                                 unit: null,
                             },
                         },
@@ -458,7 +458,7 @@ rest | 1:00 |
 11/19/23 | 7:54 |`,
                 expected: {
                     title: 'for time',
-                    description: 'A For Time with Wall Ball and Bjo.',
+                    description: 'A For Time with Wall Ball and Box Jump.',
                     workout: [
                         {
                             type: 'movement',
@@ -472,7 +472,7 @@ rest | 1:00 |
                             type: 'movement',
                             movement: {
                                 amount: '10',
-                                exercise: 'Bjo',
+                                exercise: 'Box Jump',
                                 unit: '24"',
                             },
                         },
@@ -496,7 +496,7 @@ rest | 1:00 |
                             type: 'movement',
                             movement: {
                                 amount: '20',
-                                exercise: 'Bjo',
+                                exercise: 'Box Jump',
                                 unit: '24"',
                             },
                         },
@@ -520,7 +520,7 @@ rest | 1:00 |
                             type: 'movement',
                             movement: {
                                 amount: '30',
-                                exercise: 'Bjo',
+                                exercise: 'Box Jump',
                                 unit: '24"',
                             },
                         },
@@ -557,7 +557,7 @@ Date | 11/18/25 |`,
                             type: 'movement',
                             movement: {
                                 amount: '10',
-                                exercise: 'Rmu',
+                                exercise: 'Muscle-up',
                                 unit: null,
                             },
                         },
@@ -613,13 +613,13 @@ Date | 11/18/25 |`,
 4:09 |`,
                 expected: {
                     title: 'ESMOM',
-                    description: 'A workout with Rmu and Wall Ball.',
+                    description: 'A workout with Muscle-up and Wall Ball.',
                     workout: [
                         {
                             type: 'movement',
                             movement: {
                                 amount: '10',
-                                exercise: 'Rmu',
+                                exercise: 'Muscle-up',
                                 unit: null,
                             },
                         },
@@ -634,8 +634,8 @@ Date | 11/18/25 |`,
                         {
                             type: 'movement',
                             movement: {
-                                amount: '1',
-                                exercise: '200w Bike Erg',
+                                amount: '200W',
+                                exercise: 'Bike',
                                 unit: null,
                             },
                         },
@@ -707,7 +707,7 @@ for time |
                             type: 'movement',
                             movement: {
                                 amount: '12',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -723,7 +723,7 @@ for time |
                             type: 'movement',
                             movement: {
                                 amount: '8',
-                                exercise: 'Bjo',
+                                exercise: 'Box Jump',
                                 unit: '30"',
                             },
                         },
@@ -763,7 +763,7 @@ for time |
                             type: 'movement',
                             movement: {
                                 amount: '36',
-                                exercise: 'Cal',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -779,7 +779,7 @@ for time |
                             type: 'movement',
                             movement: {
                                 amount: '24',
-                                exercise: 'Bjo',
+                                exercise: 'Box Jump',
                                 unit: '30"',
                             },
                         },
@@ -881,7 +881,7 @@ for time |
                             type: 'movement',
                             movement: {
                                 amount: '15',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -1012,7 +1012,7 @@ for time |
                             type: 'movement',
                             movement: {
                                 amount: '8',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -1316,7 +1316,7 @@ rest | 1:00 |
                             type: 'movement',
                             movement: {
                                 amount: '12',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -1359,7 +1359,7 @@ rest | 1:00 |
                             type: 'movement',
                             movement: {
                                 amount: '40',
-                                exercise: 'Air Squats',
+                                exercise: 'Air Squat',
                                 unit: null,
                             },
                         },
@@ -1459,7 +1459,7 @@ rest | 1:00 |
                             type: 'movement',
                             movement: {
                                 amount: '15',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -1560,7 +1560,7 @@ rest | 1:00 |
                             type: 'movement',
                             movement: {
                                 amount: '9',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -1694,7 +1694,7 @@ rest | 1:00 |
                             type: 'movement',
                             movement: {
                                 amount: '8',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -1786,7 +1786,7 @@ rest | 1:00 |
                             type: 'movement',
                             movement: {
                                 amount: '50',
-                                exercise: 'Air Squats',
+                                exercise: 'Air Squat',
                                 unit: null,
                             },
                         },
@@ -1836,7 +1836,7 @@ rest | 1:00 |
                             type: 'movement',
                             movement: {
                                 amount: '10',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -1953,7 +1953,7 @@ rest | 1:00 |
                             type: 'movement',
                             movement: {
                                 amount: '14',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -2085,7 +2085,7 @@ rest | 1:00 |
                             type: 'movement',
                             movement: {
                                 amount: '35',
-                                exercise: 'Air Squats',
+                                exercise: 'Air Squat',
                                 unit: null,
                             },
                         },
@@ -2127,7 +2127,7 @@ Rest | | 1:00
                             type: 'movement',
                             movement: {
                                 amount: '12',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -2284,7 +2284,7 @@ Rest | | 1:00
                             type: 'movement',
                             movement: {
                                 amount: '13',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -2359,7 +2359,7 @@ Rest | | 1:00
                             type: 'movement',
                             movement: {
                                 amount: '11',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -2429,7 +2429,7 @@ Rest | | 1:00
                             type: 'movement',
                             movement: {
                                 amount: '60',
-                                exercise: 'Air Squats',
+                                exercise: 'Air Squat',
                                 unit: null,
                             },
                         },
@@ -2584,7 +2584,7 @@ Rest | | 1:00
                             type: 'movement',
                             movement: {
                                 amount: '16',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -2659,7 +2659,7 @@ Rest | | 1:00
                             type: 'movement',
                             movement: {
                                 amount: '12',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -2877,7 +2877,7 @@ rest | 2:00 |
                             type: 'movement',
                             movement: {
                                 amount: '17',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -2952,7 +2952,7 @@ rest | 2:00 |
                             type: 'movement',
                             movement: {
                                 amount: '13',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -3109,7 +3109,7 @@ rest | 2:00 |
                             type: 'movement',
                             movement: {
                                 amount: '19',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -3242,7 +3242,7 @@ rest | 2:00 |
                             type: 'movement',
                             movement: {
                                 amount: '70',
-                                exercise: 'Air Squats',
+                                exercise: 'Air Squat',
                                 unit: null,
                             },
                         },
@@ -3295,7 +3295,7 @@ rest | 2:00 |
                             type: 'movement',
                             movement: {
                                 amount: '10',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -3474,7 +3474,7 @@ rest | 2:00 |
                             type: 'movement',
                             movement: {
                                 amount: '20',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -3549,7 +3549,7 @@ rest | 2:00 |
                             type: 'movement',
                             movement: {
                                 amount: '14',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -3706,7 +3706,7 @@ rest | 2:00 |
                             type: 'movement',
                             movement: {
                                 amount: '21',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -3799,7 +3799,7 @@ rest | 2:00 |
                             type: 'movement',
                             movement: {
                                 amount: '80',
-                                exercise: 'Air Squats',
+                                exercise: 'Air Squat',
                                 unit: null,
                             },
                         },
@@ -3849,7 +3849,7 @@ rest | 2:00 |
                             type: 'movement',
                             movement: {
                                 amount: '15',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -3921,7 +3921,7 @@ Rest | | 1:00
                             type: 'movement',
                             movement: {
                                 amount: '15',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -4092,7 +4092,7 @@ Rest | | 1:00
                             type: 'movement',
                             movement: {
                                 amount: '22',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -4167,7 +4167,7 @@ Rest | | 1:00
                             type: 'movement',
                             movement: {
                                 amount: '16',
-                                exercise: 'Cal Row',
+                                exercise: 'Row',
                                 unit: null,
                             },
                         },
@@ -4197,6 +4197,101 @@ Rest | | 1:00
                                 rounds: 9,
                                 repsIntoNextRound: 10,
                                 totalReps: 19,
+                            },
+                        },
+                    ],
+                    confidence: expect.any(Number),
+                    privacy: 'public',
+                },
+            },
+            {
+                name: '6 rds 1:00 AMRAP - Burpee over DB, Lunge, Max Burpees',
+                rawText: `6 rds | | 1:00 AMRAP
+5 | Burpee over DB |
+25' | Of Lunge | 50lb
+Max | Burpees |
+1. | 18 |
+2. | 17 |
+3. | 16 |
+4. | 15 |
+5. | 15 |
+6. | 15 |`,
+                expected: {
+                    title: '6 rds 1:00 AMRAP',
+                    description: expect.any(String),
+                    workout: [
+                        {
+                            type: 'movement',
+                            movement: {
+                                amount: '5',
+                                exercise: 'Burpee Over Bar',
+                                unit: null,
+                            },
+                        },
+                        {
+                            type: 'movement',
+                            movement: {
+                                amount: "25'",
+                                exercise: 'Lunge',
+                                unit: '50lb',
+                            },
+                        },
+                        {
+                            type: 'movement',
+                            movement: {
+                                amount: 'Max',
+                                exercise: 'Burpee',
+                                unit: null,
+                            },
+                        },
+                    ],
+                    score: [
+                        {
+                            name: 'Round 1',
+                            type: 'reps',
+                            value: '18',
+                            metadata: {
+                                totalReps: 18,
+                            },
+                        },
+                        {
+                            name: 'Round 2',
+                            type: 'reps',
+                            value: '17',
+                            metadata: {
+                                totalReps: 17,
+                            },
+                        },
+                        {
+                            name: 'Round 3',
+                            type: 'reps',
+                            value: '16',
+                            metadata: {
+                                totalReps: 16,
+                            },
+                        },
+                        {
+                            name: 'Round 4',
+                            type: 'reps',
+                            value: '15',
+                            metadata: {
+                                totalReps: 15,
+                            },
+                        },
+                        {
+                            name: 'Round 5',
+                            type: 'reps',
+                            value: '15',
+                            metadata: {
+                                totalReps: 15,
+                            },
+                        },
+                        {
+                            name: 'Round 6',
+                            type: 'reps',
+                            value: '15',
+                            metadata: {
+                                totalReps: 15,
                             },
                         },
                     ],

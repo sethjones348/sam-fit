@@ -141,6 +141,7 @@ export const workoutStore = create<WorkoutStore>((set, get) => ({
           imageUrl: extraction.imageUrl,
           metadata: {
             confidence: extraction.confidence,
+            rawGeminiText: extraction.rawGeminiText,
           },
         };
 

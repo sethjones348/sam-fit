@@ -8,7 +8,7 @@ import FeedWorkoutCard from '../components/FeedWorkoutCard';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
 
 export default function FeedPage() {
-  const { isAuthenticated, user, login } = useAuth();
+  const { isAuthenticated, user, login, isLoading: isAuthLoading } = useAuth();
   const [workouts, setWorkouts] = useState<FeedWorkout[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,13 +16,17 @@ export default function FeedPage() {
   const [hasFollowing, setHasFollowing] = useState(false);
 
   useEffect(() => {
+    if (isAuthLoading) {
+      // Wait for auth to finish loading before checking authentication
+      return;
+    }
     if (isAuthenticated && user?.id) {
       loadFeed();
       checkUserState();
     } else {
       setIsLoading(false);
     }
-  }, [isAuthenticated, user?.id]);
+  }, [isAuthenticated, user?.id, isAuthLoading]);
 
   const checkUserState = async () => {
     if (!user?.id) return;
@@ -58,6 +62,18 @@ export default function FeedPage() {
     onRefresh: loadFeed,
     enabled: isAuthenticated && !!user?.id,
   });
+
+  // Show loading state while auth is loading to prevent flickering
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center pt-20 px-4">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-cf-red mb-4"></div>
+          <p className="text-lg text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (

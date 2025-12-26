@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { WorkoutExtraction, WorkoutElement, ScoreElement } from '../types';
-import { normalizeMovementName } from '../utils/movementNormalizer';
+import { validateAndNormalizeMovement } from '../utils/movementNormalizer';
 import { validateScoreElement } from '../utils/scoreValidator';
 import { autoCorrectRoundTime } from '../utils/timeUtils';
 
@@ -187,12 +187,12 @@ function normalizeExtraction(rawExtraction: any): WorkoutExtraction {
     const normalizedWorkout: WorkoutElement[] = (rawExtraction.workout || []).map((el: any) => {
         if (el.type === 'movement' && el.movement) {
             // Normalize movement name
-            const normalized = normalizeMovementName(el.movement.exercise || '');
+            const validated = validateAndNormalizeMovement(el.movement.exercise || '');
             return {
                 type: 'movement' as const,
                 movement: {
                     amount: el.movement.amount ?? '',
-                    exercise: normalized.normalized || el.movement.exercise || '',
+                    exercise: validated.normalized || el.movement.exercise || '',
                     unit: el.movement.unit || null,
                 },
             };

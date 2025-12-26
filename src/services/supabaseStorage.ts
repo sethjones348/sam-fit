@@ -325,6 +325,7 @@ export const supabaseStorage = {
                 image_url: imageUrl || null,
                 privacy: privacy,
                 confidence: confidence,
+                metadata: extraction.rawGeminiText ? { rawGeminiText: extraction.rawGeminiText } : null,
             };
 
             // Upsert workout
@@ -375,6 +376,7 @@ export const supabaseStorage = {
                 image_url: imageUrl || null,
                 privacy: privacy,
                 confidence: confidence,
+                metadata: oldWorkout.metadata?.rawGeminiText ? { rawGeminiText: oldWorkout.metadata.rawGeminiText } : null,
             };
 
             // Use Supabase client to upsert workout
@@ -496,6 +498,7 @@ export const supabaseStorage = {
                     privacy: row.privacy || 'public',
                     metadata: {
                         confidence: row.confidence || undefined,
+                        rawGeminiText: row.metadata?.rawGeminiText || undefined,
                     },
                 };
 
@@ -585,6 +588,7 @@ export const supabaseStorage = {
                     privacy: data.privacy || 'public',
                     metadata: {
                         confidence: data.confidence || undefined,
+                        rawGeminiText: data.metadata?.rawGeminiText || undefined,
                     },
                 };
 
@@ -611,6 +615,7 @@ export const supabaseStorage = {
             imageUrl: data.image_url || '',
             metadata: {
                 confidence: data.confidence || undefined,
+                rawGeminiText: data.metadata?.rawGeminiText || undefined,
             },
             userId: data.user_id,
             privacy: data.privacy || 'public',
