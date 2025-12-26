@@ -1,24 +1,24 @@
 /**
- * Algorithmic Extraction: AI Text Extraction + Algorithmic Parsing
+ * Hybrid Extraction: Gemini Text Extraction + Algorithmic Parsing
  * 
- * This approach uses AI (OpenAI GPT-4o-mini or Gemini) ONLY for text extraction,
+ * This approach uses Gemini AI ONLY for text extraction (OCR-like functionality),
  * then applies deterministic algorithmic parsing to structure the data.
  * 
  * Benefits:
- * - AI's superior text recognition (handles handwriting, poor quality, etc.)
+ * - Gemini's superior text recognition (handles handwriting, poor quality, etc.)
  * - Algorithmic parsing (testable, deterministic, no AI hallucinations)
  * - Best of both worlds: accuracy + testability
  * 
- * Provider selection:
- * - Set USE_OPENAI=true to use OpenAI GPT-4o-mini
- * - Otherwise uses Gemini (with model fallback)
- * 
- * This service is parallel to workoutExtractor.ts (full AI extraction) and can be
+ * This service is parallel to workoutExtractor.ts (full Gemini extraction) and can be
  * tested against the same test data for comparison.
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
+import * as fs from 'fs';
+import * as path from 'path';
+import { execSync } from 'child_process';
+import sharp from 'sharp';
 import { WorkoutExtraction, WorkoutElement, ScoreElement, ScoreName } from '../types';
 import { parseTimeToSeconds, formatSecondsToTime } from '../utils/timeUtils';
 import { normalizeMovementName } from '../utils/movementNormalizer';
@@ -33,54 +33,6 @@ interface OCRData {
 }
 
 // Removed LayoutAnalysis - we parse all lines and let parsers filter themselves
-
-/**
- * Compress image using browser Canvas API
- */
-async function compressImageInBrowser(
-    base64Image: string,
-    maxWidth: number = 1920,
-    quality: number = 0.85
-): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-
-        img.onload = () => {
-            // Calculate new dimensions
-            let width = img.width;
-            let height = img.height;
-
-            if (width > maxWidth) {
-                height = (height * maxWidth) / width;
-                width = maxWidth;
-            }
-
-            // Create canvas
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-
-            // Draw and compress
-            const ctx = canvas.getContext('2d');
-            if (!ctx) {
-                reject(new Error('Failed to get canvas context'));
-                return;
-            }
-
-            ctx.drawImage(img, 0, 0, width, height);
-
-            // Convert to JPEG with compression
-            const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
-            resolve(compressedBase64);
-        };
-
-        img.onerror = () => {
-            reject(new Error('Failed to load image'));
-        };
-
-        img.src = base64Image;
-    });
-}
 
 /**
  * Grid structure: array of arrays of strings
@@ -124,10 +76,91 @@ function getGridColumn(line: GridLine, index: number, fallback: string = ''): st
     return index < line.length ? line[index] : fallback;
 }
 
-// Removed convertHeicToPngBuffer - no longer needed since:
-// 1. Gemini supports HEIC natively
-// 2. Sharp can handle HEIC directly in compression (if libheif is available)
-// 3. If compression fails, we pass HEIC through to Gemini anyway
+/**
+ * Convert HEIC image to PNG (for better compatibility with Gemini)
+ */
+async function convertHeicToPngBuffer(heicBuffer: Buffer): Promise<Buffer> {
+    // Create temporary files
+    const tempDir = path.join(process.cwd(), 'temp');
+    if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    const tempHeicPath = path.join(tempDir, `temp_${Date.now()}.heic`);
+    const tempPngPath = path.join(tempDir, `temp_${Date.now()}.png`);
+
+    try {
+        // Write HEIC buffer to temp file
+        fs.writeFileSync(tempHeicPath, heicBuffer);
+
+        // Try using macOS sips command first (most reliable for HEIC on macOS)
+        try {
+            execSync(`sips -s format png "${tempHeicPath}" --out "${tempPngPath}"`, {
+                stdio: ['ignore', 'pipe', 'pipe'],
+                encoding: 'utf8',
+                maxBuffer: 10 * 1024 * 1024 // 10MB buffer
+            });
+
+            // Wait a bit for file system to sync
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            if (fs.existsSync(tempPngPath)) {
+                const stats = fs.statSync(tempPngPath);
+                if (stats.size > 0) {
+                    // Use sharp to auto-rotate based on EXIF data
+                    try {
+                        const rotatedBuffer = await sharp(tempPngPath)
+                            .rotate() // Auto-rotate based on EXIF orientation
+                            .png()
+                            .toBuffer();
+
+                        // Clean up
+                        if (fs.existsSync(tempPngPath)) fs.unlinkSync(tempPngPath);
+                        if (fs.existsSync(tempHeicPath)) fs.unlinkSync(tempHeicPath);
+
+                        return Buffer.from(rotatedBuffer);
+                    } catch (rotateError) {
+                        // If rotation fails, just read the sips output
+                        const buffer = fs.readFileSync(tempPngPath);
+                        if (fs.existsSync(tempPngPath)) fs.unlinkSync(tempPngPath);
+                        if (fs.existsSync(tempHeicPath)) fs.unlinkSync(tempHeicPath);
+                        return buffer;
+                    }
+                }
+            }
+        } catch (sipsError) {
+            // sips not available or failed, try sharp
+            try {
+                const buffer = await sharp(tempHeicPath)
+                    .rotate()
+                    .png()
+                    .toBuffer();
+
+                if (fs.existsSync(tempPngPath)) fs.unlinkSync(tempPngPath);
+                if (fs.existsSync(tempHeicPath)) fs.unlinkSync(tempHeicPath);
+
+                return buffer;
+            } catch (sharpError) {
+                throw new Error(
+                    `Failed to convert HEIC image. ` +
+                    `sips error: ${sipsError instanceof Error ? sipsError.message : String(sipsError)}. ` +
+                    `sharp error: ${sharpError instanceof Error ? sharpError.message : String(sharpError)}. ` +
+                    `Note: HEIC conversion requires macOS sips or libheif for sharp.`
+                );
+            }
+        }
+    } finally {
+        // Clean up temp files
+        try {
+            if (fs.existsSync(tempPngPath)) fs.unlinkSync(tempPngPath);
+            if (fs.existsSync(tempHeicPath)) fs.unlinkSync(tempHeicPath);
+        } catch (e) {
+            // Ignore cleanup errors
+        }
+    }
+
+    throw new Error('HEIC conversion failed - no output buffer created');
+}
 
 /**
  * Extract text from image using either OpenAI or Gemini (text extraction only)
@@ -139,7 +172,7 @@ function getGridColumn(line: GridLine, index: number, fallback: string = ''): st
 async function extractTextWithGemini(imageBase64: string): Promise<OCRData> {
     // Check which provider to use
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const useOpenAI = (typeof window !== 'undefined' && (globalThis as any).import?.meta?.env?.USE_OPENAI === 'true') || (typeof process !== 'undefined' && process.env?.USE_OPENAI === 'true');
+    const useOpenAI = process.env.USE_OPENAI === 'true' || (typeof window !== 'undefined' && (globalThis as any).import?.meta?.env?.USE_OPENAI === 'true');
 
     if (useOpenAI) {
         return extractTextWithOpenAI(imageBase64);
@@ -153,7 +186,7 @@ async function extractTextWithGemini(imageBase64: string): Promise<OCRData> {
  */
 async function extractTextWithOpenAI(imageBase64: string): Promise<OCRData> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const OPENAI_API_KEY = (typeof window !== 'undefined' && (globalThis as any).import?.meta?.env?.VITE_OPENAI_API_KEY ? (globalThis as any).import.meta.env.VITE_OPENAI_API_KEY : null) || (typeof process !== 'undefined' && process.env?.VITE_OPENAI_API_KEY) || null;
+    const OPENAI_API_KEY = process.env.VITE_OPENAI_API_KEY || (typeof window !== 'undefined' && (globalThis as any).import?.meta?.env?.VITE_OPENAI_API_KEY ? (globalThis as any).import.meta.env.VITE_OPENAI_API_KEY : null);
 
     if (!OPENAI_API_KEY) {
         throw new Error('VITE_OPENAI_API_KEY is required when USE_OPENAI=true');
@@ -180,46 +213,41 @@ async function extractTextWithOpenAI(imageBase64: string): Promise<OCRData> {
     const originalSize = imageBuffer.length;
     console.log(`  [Image Processing] Original size: ${(originalSize / 1024 / 1024).toFixed(2)}MB`);
 
-    // Gemini supports HEIC natively, so we can pass it through directly
-    // The compression step below will handle HEIC images and convert them to JPEG
-    // No need for separate HEIC->PNG conversion
+    // Convert HEIC to PNG if needed (Gemini supports HEIC but PNG is more reliable)
+    if (mimeType === 'image/heic' || mimeType === 'image/heif') {
+        const conversionStartTime = Date.now();
+        console.log(`  [Image Conversion] Converting HEIC to PNG...`);
+        const convertedBuffer = await convertHeicToPngBuffer(imageBuffer);
+        imageBuffer = Buffer.from(convertedBuffer);
+        mimeType = 'image/png';
+        const conversionTime = Date.now() - conversionStartTime;
+        console.log(`  [Image Conversion] ✓ Converted (${(conversionTime / 1000).toFixed(2)}s, size: ${(imageBuffer.length / 1024 / 1024).toFixed(2)}MB)`);
+    }
 
-    // Compress and resize images to reduce API payload size and improve performance
-    // Note: HEIC requires libheif for sharp to process, so we skip compression for HEIC
-    // and pass it directly to Gemini (which supports HEIC natively)
-    const imageSizeMB = imageBuffer.length / 1024 / 1024;
-    const isHeic = mimeType === 'image/heic' || mimeType === 'image/heif';
+    // Compress and resize image before sending to Gemini to reduce API call time
+    // Whiteboard text doesn't need high resolution - 1920px width is plenty
+    const compressionStartTime = Date.now();
+    console.log(`  [Image Compression] Compressing and resizing...`);
+    try {
+        const compressedBuffer = await sharp(imageBuffer)
+            .resize(1920, null, {
+                withoutEnlargement: true, // Don't upscale small images
+                fit: 'inside' // Maintain aspect ratio
+            })
+            .jpeg({
+                quality: 85, // Good balance of quality and size
+                mozjpeg: true // Better compression
+            })
+            .toBuffer();
 
-    if (isHeic) {
-        // Skip compression for HEIC - sharp needs libheif which may not be available
-        // Gemini supports HEIC natively, so we can pass it through directly
-        console.log(`  [Image Processing] ✓ Using HEIC format (${imageSizeMB.toFixed(2)}MB) - Gemini supports HEIC natively`);
-    } else {
-        // Compress other formats (JPG, PNG, WEBP) - whiteboard text doesn't need high resolution
-        // Use browser Canvas API for compression (works in browser, not Node.js)
-        if (typeof window !== 'undefined') {
-            const compressionStartTime = Date.now();
-            console.log(`  [Image Compression] Compressing image (${imageSizeMB.toFixed(2)}MB, ${mimeType})...`);
-            try {
-                const dataUrl = `data:${mimeType};base64,${imageBuffer.toString('base64')}`;
-                const compressedDataUrl = await compressImageInBrowser(dataUrl, 1920, 0.85);
-                const compressedBase64 = compressedDataUrl.split(',')[1];
-                const compressedBuffer = Buffer.from(compressedBase64, 'base64');
-
-                const compressionRatio = ((1 - compressedBuffer.length / imageBuffer.length) * 100).toFixed(1);
-                imageBuffer = compressedBuffer;
-                mimeType = 'image/jpeg';
-                const compressionTime = Date.now() - compressionStartTime;
-                console.log(`  [Image Compression] ✓ Compressed (${(compressionTime / 1000).toFixed(2)}s, ${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB, ${compressionRatio}% reduction)`);
-            } catch (compressionError) {
-                // If compression fails, log and continue with original
-                const errorMsg = compressionError instanceof Error ? compressionError.message : String(compressionError);
-                console.log(`  [Image Compression] ⚠ Compression failed (${errorMsg.substring(0, 50)}), using original - Gemini supports ${mimeType} natively`);
-            }
-        } else {
-            // Node.js environment - skip compression
-            console.log(`  [Image Processing] ✓ Using original format (${imageSizeMB.toFixed(2)}MB, ${mimeType}) - compression skipped in Node.js`);
-        }
+        const compressionRatio = ((1 - compressedBuffer.length / imageBuffer.length) * 100).toFixed(1);
+        imageBuffer = compressedBuffer;
+        mimeType = 'image/jpeg';
+        const compressionTime = Date.now() - compressionStartTime;
+        console.log(`  [Image Compression] ✓ Compressed (${(compressionTime / 1000).toFixed(2)}s, ${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB, ${compressionRatio}% reduction)`);
+    } catch (compressionError) {
+        // If compression fails (e.g., unsupported format), log and continue with original
+        console.log(`  [Image Compression] ⚠ Compression failed, using original (${((compressionError as Error).message).substring(0, 50)})`);
     }
 
     // Prompt for text extraction with pipe delimiters for easier parsing
@@ -338,7 +366,7 @@ Output only the extracted text with pipes added.`;
  */
 async function extractTextWithGeminiAPI(imageBase64: string): Promise<OCRData> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const GEMINI_API_KEY = (typeof window !== 'undefined' && (globalThis as any).import?.meta?.env?.VITE_GEMINI_API_KEY ? (globalThis as any).import.meta.env.VITE_GEMINI_API_KEY : null) || (typeof process !== 'undefined' && process.env?.VITE_GEMINI_API_KEY) || null;
+    const GEMINI_API_KEY = process.env.VITE_GEMINI_API_KEY || (typeof window !== 'undefined' && (globalThis as any).import?.meta?.env?.VITE_GEMINI_API_KEY ? (globalThis as any).import.meta.env.VITE_GEMINI_API_KEY : null);
 
     if (!GEMINI_API_KEY) {
         throw new Error('VITE_GEMINI_API_KEY is required for text extraction');
@@ -365,46 +393,41 @@ async function extractTextWithGeminiAPI(imageBase64: string): Promise<OCRData> {
     const originalSize = imageBuffer.length;
     console.log(`  [Image Processing] Original size: ${(originalSize / 1024 / 1024).toFixed(2)}MB`);
 
-    // Gemini supports HEIC natively, so we can pass it through directly
-    // The compression step below will handle HEIC images and convert them to JPEG
-    // No need for separate HEIC->PNG conversion
+    // Convert HEIC to PNG if needed (Gemini supports HEIC but PNG is more reliable)
+    if (mimeType === 'image/heic' || mimeType === 'image/heif') {
+        const conversionStartTime = Date.now();
+        console.log(`  [Image Conversion] Converting HEIC to PNG...`);
+        const convertedBuffer = await convertHeicToPngBuffer(imageBuffer);
+        imageBuffer = Buffer.from(convertedBuffer);
+        mimeType = 'image/png';
+        const conversionTime = Date.now() - conversionStartTime;
+        console.log(`  [Image Conversion] ✓ Converted (${(conversionTime / 1000).toFixed(2)}s, size: ${(imageBuffer.length / 1024 / 1024).toFixed(2)}MB)`);
+    }
 
-    // Compress and resize images to reduce API payload size and improve performance
-    // Note: HEIC requires libheif for sharp to process, so we skip compression for HEIC
-    // and pass it directly to Gemini (which supports HEIC natively)
-    const imageSizeMB = imageBuffer.length / 1024 / 1024;
-    const isHeic = mimeType === 'image/heic' || mimeType === 'image/heif';
+    // Compress and resize image before sending to Gemini to reduce API call time
+    // Whiteboard text doesn't need high resolution - 1920px width is plenty
+    const compressionStartTime = Date.now();
+    console.log(`  [Image Compression] Compressing and resizing...`);
+    try {
+        const compressedBuffer = await sharp(imageBuffer)
+            .resize(1920, null, {
+                withoutEnlargement: true, // Don't upscale small images
+                fit: 'inside' // Maintain aspect ratio
+            })
+            .jpeg({
+                quality: 85, // Good balance of quality and size
+                mozjpeg: true // Better compression
+            })
+            .toBuffer();
 
-    if (isHeic) {
-        // Skip compression for HEIC - sharp needs libheif which may not be available
-        // Gemini supports HEIC natively, so we can pass it through directly
-        console.log(`  [Image Processing] ✓ Using HEIC format (${imageSizeMB.toFixed(2)}MB) - Gemini supports HEIC natively`);
-    } else {
-        // Compress other formats (JPG, PNG, WEBP) - whiteboard text doesn't need high resolution
-        // Use browser Canvas API for compression (works in browser, not Node.js)
-        if (typeof window !== 'undefined') {
-            const compressionStartTime = Date.now();
-            console.log(`  [Image Compression] Compressing image (${imageSizeMB.toFixed(2)}MB, ${mimeType})...`);
-            try {
-                const dataUrl = `data:${mimeType};base64,${imageBuffer.toString('base64')}`;
-                const compressedDataUrl = await compressImageInBrowser(dataUrl, 1920, 0.85);
-                const compressedBase64 = compressedDataUrl.split(',')[1];
-                const compressedBuffer = Buffer.from(compressedBase64, 'base64');
-
-                const compressionRatio = ((1 - compressedBuffer.length / imageBuffer.length) * 100).toFixed(1);
-                imageBuffer = compressedBuffer;
-                mimeType = 'image/jpeg';
-                const compressionTime = Date.now() - compressionStartTime;
-                console.log(`  [Image Compression] ✓ Compressed (${(compressionTime / 1000).toFixed(2)}s, ${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB, ${compressionRatio}% reduction)`);
-            } catch (compressionError) {
-                // If compression fails, log and continue with original
-                const errorMsg = compressionError instanceof Error ? compressionError.message : String(compressionError);
-                console.log(`  [Image Compression] ⚠ Compression failed (${errorMsg.substring(0, 50)}), using original - Gemini supports ${mimeType} natively`);
-            }
-        } else {
-            // Node.js environment - skip compression
-            console.log(`  [Image Processing] ✓ Using original format (${imageSizeMB.toFixed(2)}MB, ${mimeType}) - compression skipped in Node.js`);
-        }
+        const compressionRatio = ((1 - compressedBuffer.length / imageBuffer.length) * 100).toFixed(1);
+        imageBuffer = compressedBuffer;
+        mimeType = 'image/jpeg';
+        const compressionTime = Date.now() - compressionStartTime;
+        console.log(`  [Image Compression] ✓ Compressed (${(compressionTime / 1000).toFixed(2)}s, ${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB, ${compressionRatio}% reduction)`);
+    } catch (compressionError) {
+        // If compression fails (e.g., unsupported format), log and continue with original
+        console.log(`  [Image Compression] ⚠ Compression failed, using original (${((compressionError as Error).message).substring(0, 50)})`);
     }
 
     // Prompt for text extraction with pipe delimiters for easier parsing
@@ -439,7 +462,7 @@ Output only the extracted text with pipes added.`;
     let availableModels: string[] = [];
     try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const apiKey = (typeof window !== 'undefined' && (globalThis as any).import?.meta?.env?.VITE_GEMINI_API_KEY ? (globalThis as any).import.meta.env.VITE_GEMINI_API_KEY : null) || (typeof process !== 'undefined' && process.env?.VITE_GEMINI_API_KEY) || null;
+        const apiKey = process.env.VITE_GEMINI_API_KEY || (typeof window !== 'undefined' && (globalThis as any).import?.meta?.env?.VITE_GEMINI_API_KEY ? (globalThis as any).import.meta.env.VITE_GEMINI_API_KEY : null);
         if (apiKey) {
             const response = await fetch(
                 `https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`
@@ -678,19 +701,10 @@ function parseTitle(grid: GridData): { title: string; timeCap?: number; emomPeri
     const titleLower = title.toLowerCase();
     const result: { title: string; timeCap?: number; emomPeriod?: number; setsInfo?: { sets: number; rounds: number } } = { title: title || 'Workout' };
 
-    // Extract time cap (e.g., "10 min AMRAP - 15 min cap", "15 min cap", or "11:00 CAP")
-    const timeCapMatch = titleLower.match(/(\d+)\s*(?:min|minute|m)\s*(?:cap|time\s*cap)/i) ||
-        titleLower.match(/(\d{1,2}):(\d{2})\s*cap/i);
+    // Extract time cap (e.g., "10 min AMRAP - 15 min cap" or "15 min cap")
+    const timeCapMatch = titleLower.match(/(\d+)\s*(?:min|minute|m)\s*(?:cap|time\s*cap)/i);
     if (timeCapMatch) {
-        if (timeCapMatch[2]) {
-            // Time format: "11:00 CAP" - convert MM:SS to seconds
-            const minutes = parseInt(timeCapMatch[1], 10);
-            const seconds = parseInt(timeCapMatch[2], 10);
-            result.timeCap = minutes * 60 + seconds;
-        } else {
-            // Minutes format: "15 min cap" - convert to seconds
-            result.timeCap = parseInt(timeCapMatch[1], 10) * 60;
-        }
+        result.timeCap = parseInt(timeCapMatch[1], 10) * 60; // Convert to seconds
     }
 
     // Extract EMOM period (e.g., "E5MOM" = 5, "5 min EMOM" = 5)
@@ -729,67 +743,16 @@ function parseMovements(grid: GridData): WorkoutElement[] {
     // Skip the first line (title) when parsing movements
     const movementGrids = grid.slice(1);
 
-    // Track pending pyramid/ladder rep scheme to associate with next movement
-    let pendingAmount: string | null = null;
-
-    for (let i = 0; i < movementGrids.length; i++) {
-        const gridLine = movementGrids[i];
+    for (const gridLine of movementGrids) {
         if (!gridLine || gridLine.length === 0) continue;
 
         const firstColumn = getGridColumn(gridLine, 0);
         // Join non-empty columns with spaces (pipes are just delimiters, not part of the content)
         const trimmed = gridLine.filter(col => col && col.trim().length > 0).join(' ');
 
-        // Check if this is a pyramid/ladder rep scheme on its own line (e.g., "1-2-3-4-5-5-4-3-2-1")
-        // Store it to use with the next movement
-        if (gridLine.length === 1 && firstColumn.match(/^(\d+(?:-\d+)+)$/)) {
-            pendingAmount = firstColumn;
-            continue; // Skip this line, use the amount for the next movement
-        }
-
         // Skip lines that are clearly not movements (like section headers)
         // But don't skip "rest" here - we'll handle it as a descriptive element below
         if (firstColumn.match(/^(workout|score|rounds?|sets?|time|reps?)$/i)) {
-            continue;
-        }
-
-        // Check for lines starting with "-" (e.g., "-building", "- 2:00 Clock", "-rest | 3:00 | btwn-")
-        // These are descriptive instruction elements
-        if (firstColumn.startsWith('-') || trimmed.startsWith('-')) {
-            const cleanTextParts = gridLine.filter(col => col && col.trim().length > 0);
-            const cleanText = cleanTextParts.join(' ');
-
-            // Check if it contains "rest" with a time - extract duration but keep as instruction
-            const restTimeMatch = cleanText.match(/rest\s+(\d{1,2}):(\d{2})/i);
-            const duration = restTimeMatch ?
-                parseInt(restTimeMatch[1], 10) * 60 + parseInt(restTimeMatch[2], 10) :
-                undefined;
-
-            elements.push({
-                type: 'descriptive',
-                descriptive: {
-                    text: cleanText,
-                    type: 'instruction', // Always instruction for lines starting with "-"
-                    duration: duration,
-                },
-            });
-            continue;
-        }
-
-        // Check for "X Sets" or "X Rounds" pattern (e.g., "3 Sets", "4 Rounds")
-        // These are descriptive elements indicating set/round count, not movements
-        const setsRoundsMatch = trimmed.match(/^(\d+)\s+(sets?|rounds?)$/i);
-        if (setsRoundsMatch) {
-            // Create descriptive element for set/round count
-            const cleanTextParts = gridLine.filter(col => col && col.trim().length > 0);
-            const cleanText = cleanTextParts.join(' ');
-            elements.push({
-                type: 'descriptive',
-                descriptive: {
-                    text: cleanText,
-                    type: 'instruction',
-                },
-            });
             continue;
         }
 
@@ -811,56 +774,22 @@ function parseMovements(grid: GridData): WorkoutElement[] {
             // Has "rounds + reps" pattern - definitely a score
             continue;
         }
-        // Skip lines with "@" symbol that indicate time cap results (e.g., "9 rds | @ | 11min")
-        // Pattern: number + "rds" + "@" + time = rounds completed at time cap
-        if (trimmed.match(/\d+\s*rds?\s*@/i) ||
-            (gridLine.length >= 3 &&
-                getGridColumn(gridLine, 0).match(/^\d+\s*rds?$/i) &&
-                getGridColumn(gridLine, 1) === '@')) {
-            // This is a score showing rounds at time cap, not a movement
-            continue;
-        }
 
         // Check for rest/descriptive elements FIRST (before grid parsing)
-        // This prevents "rest | 1:00 |" or "1:00 | rest" from being parsed as movement or score
+        // This prevents "rest | 1:00 |" from being parsed as movement or score
         // Also handles "@ | 8:00 |" as a descriptive element
-
-        // Check for "rest" keyword at the start
         const restMatch = trimmed.match(/^(rest|repeat|then|and)\s*(.*)/i);
-        // Also check for reversed format: "1:00 | rest" (time first, then rest keyword)
-        const reversedRestMatch = trimmed.match(/^(\d{1,2}:\d{2})\s+(rest|repeat|then|and)/i) ||
-            (gridLine.length >= 2 &&
-                getGridColumn(gridLine, 0).match(/^\d{1,2}:\d{2}$/) &&
-                getGridColumn(gridLine, 1).match(/^(rest|repeat|then|and)$/i));
-
-        if (restMatch || reversedRestMatch) {
-            let keyword: string = '';
-            let duration: number | null = null;
-
-            if (restMatch) {
-                // Standard format: "rest | 1:00" or "rest 1:00"
-                keyword = restMatch[1].toLowerCase(); // Normalize to lowercase
-                duration = parseRestDuration(trimmed);
-                if (!duration && gridLine.length >= 3) {
-                    // Check grid columns for time (e.g., col2 might have "1:00")
-                    const timeCol = getGridColumn(gridLine, 2) || getGridColumn(gridLine, 1);
-                    if (timeCol) {
-                        duration = parseRestDuration(`rest ${timeCol}`);
-                    }
-                }
-            } else if (reversedRestMatch) {
-                // Reversed format: "1:00 | rest" (time first, then rest)
-                const timeStr = getGridColumn(gridLine, 0);
-                keyword = getGridColumn(gridLine, 1).toLowerCase();
-                // Parse the time (e.g., "1:00" = 60 seconds)
-                const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})/);
-                if (timeMatch) {
-                    const minutes = parseInt(timeMatch[1], 10);
-                    const seconds = parseInt(timeMatch[2], 10);
-                    duration = minutes * 60 + seconds;
+        if (restMatch) {
+            const [, keyword] = restMatch;
+            // Try to extract duration from grid format (e.g., "Rest | | 1:00")
+            let duration = parseRestDuration(trimmed);
+            if (!duration && gridLine.length >= 3) {
+                // Check grid columns for time (e.g., col2 might have "1:00")
+                const timeCol = getGridColumn(gridLine, 2) || getGridColumn(gridLine, 1);
+                if (timeCol) {
+                    duration = parseRestDuration(`rest ${timeCol}`);
                 }
             }
-
             // Create clean text without pipes - join non-empty columns with spaces
             const cleanTextParts = gridLine.filter(col => col && col.trim().length > 0);
             const cleanText = cleanTextParts.join(' ');
@@ -869,9 +798,9 @@ function parseMovements(grid: GridData): WorkoutElement[] {
                 type: 'descriptive',
                 descriptive: {
                     text: cleanText,
-                    type: keyword === 'rest' ? 'rest' :
-                        keyword === 'repeat' ? 'repeat' :
-                            keyword === 'then' || keyword === 'and' ? 'instruction' : null,
+                    type: keyword.toLowerCase() === 'rest' ? 'rest' :
+                        keyword.toLowerCase() === 'repeat' ? 'repeat' :
+                            keyword.toLowerCase() === 'then' || keyword.toLowerCase() === 'and' ? 'instruction' : null,
                     duration: duration || undefined,
                 },
             });
@@ -883,15 +812,10 @@ function parseMovements(grid: GridData): WorkoutElement[] {
             // Extract time if present
             const timeMatch = trimmed.match(/(\d{1,2}):(\d{2})/);
             const duration = timeMatch ? parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10) : undefined;
-
-            // Create clean text without pipes - join non-empty columns with spaces
-            const cleanTextParts = gridLine.filter(col => col && col.trim().length > 0);
-            const cleanText = cleanTextParts.join(' ');
-
             elements.push({
                 type: 'descriptive',
                 descriptive: {
-                    text: cleanText,
+                    text: trimmed,
                     type: 'instruction',
                     duration: duration,
                 },
@@ -907,100 +831,11 @@ function parseMovements(grid: GridData): WorkoutElement[] {
             }
         }
 
-        // Parse grid format: amount | exercise | unit OR amount | unit | exercise
+        // Parse grid format: amount | exercise | unit
         if (gridLine.length >= 2) {
-            const col0 = getGridColumn(gridLine, 0);
-            const col1 = getGridColumn(gridLine, 1);
-            const col2 = getGridColumn(gridLine, 2);
-
-            // Check if this is reversed format: amount | unit | exercise
-            // (e.g., "15 | cal | ski:", "30 | cal | Bike", "30 | ca | Bike")
-            // Note: "ca" is an abbreviation for "cal"
-            const isReversedFormat = gridLine.length >= 3 &&
-                col0.match(/^\d+[a-zA-Z]*$/) &&
-                col1 && col1.match(/^(cal|ca|lbs|kg|min|sec)$/i) &&
-                col2 && col2.length > 1;
-
-            let amount: string;
-            let exercise: string;
-            let unit: string | null;
-
-            if (isReversedFormat) {
-                // Reversed format: amount | unit | exercise
-                amount = col0;
-                // Normalize "ca" to "cal"
-                unit = col1.toLowerCase() === 'ca' ? 'cal' : col1;
-                exercise = col2;
-            } else {
-                // Standard format: amount | exercise | unit
-                // But handle case where we have a pending amount from pyramid/ladder line
-                if (pendingAmount) {
-                    // We have a pending amount from previous line (pyramid/ladder)
-                    // In this case, col0 is the exercise, col1 is the unit
-                    amount = pendingAmount;
-                    pendingAmount = null; // Clear pending amount after using it
-                    exercise = col0; // First column is the exercise
-                    unit = col1 || null; // Second column is the unit
-                } else {
-                    // Standard format: amount | exercise | unit
-                    // But check if the last column is a time (MM:SS format) - if so, it's a score, not a unit
-                    const lastCol = getGridColumn(gridLine, gridLine.length - 1);
-                    const isTimeInLastCol = lastCol && lastCol.match(/^\d{1,2}:\d{2}$/);
-
-                    if (isTimeInLastCol && gridLine.length >= 3) {
-                        // Last column is a time - it's a score, not part of the movement
-                        // Parse as: amount | exercise (unit is null, time is handled by score parser)
-                        amount = col0;
-                        exercise = col1;
-                        unit = null;
-                    } else {
-                        // Standard format: amount | exercise | unit
-                        amount = col0;
-                        exercise = col1;
-                        unit = col2 || null;
-                    }
-                }
-
-                // Check if col1 or col2 contains descriptive phrases like "after each set"
-                // If so, extract them as descriptive elements and use the rest as exercise/unit
-                const descriptivePhrases = ['after each set', 'after each round', 'each set', 'each round', 'per set', 'per round'];
-                const col1Lower = col1 ? col1.toLowerCase() : '';
-                const col2Lower = col2 ? col2.toLowerCase() : '';
-
-                for (const phrase of descriptivePhrases) {
-                    if (col1Lower.includes(phrase)) {
-                        // Extract the exercise part (before the phrase)
-                        const parts = col1.split(new RegExp(`\\b${phrase}\\b`, 'i'));
-                        exercise = parts[0].trim();
-                        // Create descriptive element from the phrase
-                        const cleanTextParts = gridLine.filter(col => col && col.trim().length > 0);
-                        const cleanText = cleanTextParts.join(' ');
-                        elements.push({
-                            type: 'descriptive',
-                            descriptive: {
-                                text: cleanText,
-                                type: 'instruction',
-                            },
-                        });
-                        break;
-                    } else if (col2Lower.includes(phrase)) {
-                        // The phrase is in col2, so col1 is the exercise and col2 is the descriptive
-                        exercise = col1;
-                        unit = null;
-                        // Create descriptive element from col2
-                        const cleanTextParts = [col2].filter(col => col && col.trim().length > 0);
-                        const cleanText = cleanTextParts.join(' ');
-                        elements.push({
-                            type: 'descriptive',
-                            descriptive: {
-                                text: cleanText,
-                                type: 'instruction',
-                            },
-                        });
-                        break;
-                    }
-                }
-            }
+            const amount = getGridColumn(gridLine, 0);
+            const exercise = getGridColumn(gridLine, 1);
+            const unit = getGridColumn(gridLine, 2);
 
             // Skip if exercise is empty (e.g., "10 | |")
             if (!exercise || exercise.trim().length === 0) {
@@ -1173,65 +1008,22 @@ function parseScores(grid: GridData, timeCap?: number): ScoreElement[] {
         }
 
         // Skip rest/descriptive elements (they should be in workout, not scores)
-        // Check both formats: "rest | 1:00" and "1:00 | rest"
-        // Also check for lines starting with "-" that contain "rest"
-        if (trimmed.match(/^(rest|repeat|then|and)\s*(.*)/i) ||
-            trimmed.match(/^(\d{1,2}:\d{2})\s+(rest|repeat|then|and)/i) ||
-            trimmed.match(/^-\s*(rest|repeat|then|and)/i) ||
-            (gridLine.length >= 2 &&
-                getGridColumn(gridLine, 0).match(/^\d{1,2}:\d{2}$/) &&
-                getGridColumn(gridLine, 1).match(/^(rest|repeat|then|and)$/i))) {
+        if (trimmed.match(/^(rest|repeat|then|and)\s*(.*)/i)) {
             continue;
         }
 
         // Skip "@" symbol lines (descriptive elements, e.g., "@ | 8:00 |")
-        // But allow "@" in middle if it's a time cap result (e.g., "9 rds | @ | 11min")
         const firstColumn = getGridColumn(gridLine, 0);
-
-        // If "@" is first column, it's a descriptive element - skip
-        // If "@" is in middle with "rds" pattern, it's a time cap result - handle in score parsing
         if (firstColumn === '@' || trimmed.match(/^@\s*\|/)) {
             continue; // This is a descriptive element, not a score
         }
 
-        // Check if this line has a time in the last column (e.g., "30/24 Cal Echo | 13:09")
-        // Extract the time as a score, even if the line also contains a movement
-        if (gridLine.length >= 2) {
-            const lastCol = getGridColumn(gridLine, gridLine.length - 1);
-            const timeMatch = lastCol.match(/^(\d{1,2}):(\d{2})$/);
-            if (timeMatch) {
-                const timeInSeconds = parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10);
-                if (timeInSeconds < 3600) { // Less than 1 hour
-                    const scoreName = setIndex > 0
-                        ? `Set ${setIndex}` as ScoreName
-                        : roundIndex === 0
-                            ? 'Finish Time' as ScoreName
-                            : `Round ${roundIndex}` as ScoreName;
-
-                    scores.push({
-                        name: scoreName,
-                        type: 'time',
-                        value: lastCol,
-                        metadata: { timeInSeconds },
-                    });
-                    roundIndex++;
-                    continue; // Skip the rest of this line - the time was the score
-                }
-            }
-        }
-
         // Skip lines that look like movements (have exercise names, not scores)
-        // Also skip lines that match common exercise patterns
-        if (trimmed.match(/\b(HSPU|Hspu|hspu|Strict|Kipping|Cal Echo|Echo|Building|Clock)\b/i)) {
-            continue; // This is a movement line, not a score
-        }
-
         if (gridLine.length >= 2) {
             const col0 = getGridColumn(gridLine, 0);
             const col1 = getGridColumn(gridLine, 1);
-            const col2 = getGridColumn(gridLine, 2);
 
-            // Check for standard format: amount | exercise | unit
+            // Skip if first column is a number (with or without letters like "200W") and second column looks like an exercise
             // (e.g., "30 | DU", "20 | WB", "200W | Bike erg")
             if (col0.match(/^\d+[a-zA-Z]*$/) && col1 &&
                 !col1.match(/^\d+$/) &&
@@ -1241,16 +1033,6 @@ function parseScores(grid: GridData, timeCap?: number): ScoreElement[] {
                 col1.length > 1 &&
                 !col1.match(/^(cal|lbs|kg|min|sec)$/i)) {
                 // Likely a movement line (amount | exercise), not a score
-                continue;
-            }
-
-            // Check for reversed format: amount | unit | exercise
-            // (e.g., "15 | cal | ski:", "30 | cal | Bike", "30 | ca | Bike")
-            // Note: "ca" is an abbreviation for "cal"
-            if (gridLine.length >= 3 && col0.match(/^\d+[a-zA-Z]*$/) &&
-                col1 && col1.match(/^(cal|ca|lbs|kg|min|sec)$/i) &&
-                col2 && col2.length > 1 && !col2.match(/^\d+$/) && !col2.match(/^\d{1,2}:\d{2}$/)) {
-                // This is definitely a movement line (amount | unit | exercise), not a score
                 continue;
             }
         }
@@ -1290,41 +1072,10 @@ function parseScores(grid: GridData, timeCap?: number): ScoreElement[] {
             const col1 = getGridColumn(workingGrid, 1);
             const col2 = getGridColumn(workingGrid, 2);
 
-            // Time format: "4:06 |" or "4 | 06 |" or "25:55 | | | 11/9/25" or "11/19/23 | 7:54"
-            // Check if col0 is a date - if so, the time is likely in col1 (but only if col1 looks like a time)
-            const isDateInCol0 = col0.match(/^\d{1,2}\/\d{1,2}\/\d{2,4}$/);
-            const col1IsTime = col1 && col1.match(/^\d{1,2}:\d{2}$/);
-
-            // If col0 is a date, skip parsing it as a time (dates should never be parsed as times)
-            if (isDateInCol0) {
-                if (col1IsTime) {
-                    // Date in col0, time in col1 - use col1
-                    const timeInSeconds = parseTimeToSeconds(col1);
-                    if (timeInSeconds !== null && timeInSeconds < 3600) {
-                        const isRoundBased = scoreGrids.length > 2;
-                        const scoreName = setIndex > 0
-                            ? `Set ${setIndex}` as ScoreName
-                            : (roundIndex === 0 && !isRoundBased)
-                                ? 'Finish Time' as ScoreName
-                                : `Round ${roundIndex + 1}` as ScoreName;
-
-                        scores.push({
-                            name: scoreName,
-                            type: 'time',
-                            value: formatSecondsToTime(timeInSeconds),
-                            metadata: { timeInSeconds },
-                        });
-                        roundIndex++;
-                        continue;
-                    }
-                }
-                // Date in col0 but no valid time in col1 - skip this line (it's just a date, not a score)
-                continue;
-            }
-
-            // Not a date - proceed with normal time parsing
+            // Time format: "4:06 |" or "4 | 06 |" or "25:55 | | | 11/9/25"
+            // Strip date from col0 if present before parsing time
             let timeStr = col0;
-            // Remove date patterns from time string if they somehow got mixed in
+            // Remove date patterns from time string
             timeStr = timeStr.replace(/\d{1,2}\/\d{1,2}\/\d{2,4}/g, '').trim();
 
             // Parse as time if it matches time format, UNLESS it has letters attached (like "200W")
@@ -1386,16 +1137,7 @@ function parseScores(grid: GridData, timeCap?: number): ScoreElement[] {
             }
 
             // Single number (could be reps or time)
-            // But skip if the original line had multiple words (e.g., "30 DU" without pipes = movement, not score)
             if (workingGrid.length === 1 && col0) {
-                // Check if the original trimmed line has multiple words separated by spaces
-                // If so, it's likely a movement without pipes, not a single number score
-                const originalLineHasMultipleWords = trimmed.split(/\s+/).length > 1;
-                if (originalLineHasMultipleWords) {
-                    // This is likely a movement line without pipes (e.g., "30 DU"), skip it
-                    continue;
-                }
-
                 const num = parseInt(col0, 10);
                 if (!isNaN(num)) {
                     // Check if it's a time (MM:SS format without colon)
@@ -1459,32 +1201,6 @@ function parseScores(grid: GridData, timeCap?: number): ScoreElement[] {
             }
         }
 
-        // Check if this line has a time in the last column (e.g., "30/24 Cal Echo | 13:09")
-        // Extract the time as a score
-        if (gridLine.length >= 2) {
-            const lastCol = getGridColumn(gridLine, gridLine.length - 1);
-            const timeMatch = lastCol.match(/^(\d{1,2}):(\d{2})$/);
-            if (timeMatch) {
-                const timeInSeconds = parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10);
-                if (timeInSeconds < 3600) { // Less than 1 hour
-                    const scoreName = setIndex > 0
-                        ? `Set ${setIndex}` as ScoreName
-                        : roundIndex === 0
-                            ? 'Finish Time' as ScoreName
-                            : `Round ${roundIndex}` as ScoreName;
-
-                    scores.push({
-                        name: scoreName,
-                        type: 'time',
-                        value: lastCol,
-                        metadata: { timeInSeconds },
-                    });
-                    roundIndex++;
-                    continue; // Skip the rest of this line - the time was the score
-                }
-            }
-        }
-
         // Time format: "4:06", "406", "4 06", "Start: 0:00, Stop: 1:13"
         // Check for start/stop times first
         const startStopMatch = trimmed.match(/start:\s*(\d{1,2}):?(\d{2})\s*,\s*stop:\s*(\d{1,2}):?(\d{2})/i);
@@ -1513,16 +1229,10 @@ function parseScores(grid: GridData, timeCap?: number): ScoreElement[] {
         }
 
         // Regular time format: "4:06" or "406" (omitted colon)
-        // Skip single-digit numbers (< 10) as they're likely not times (e.g., "10" from "10 deadlift")
         const timeMatch = trimmed.match(/(\d{1,2}):?(\d{2})/);
         if (timeMatch) {
             const timeInSeconds = parseTimeToSeconds(trimmed);
-            // Skip very short times (< 10 seconds) as they're likely not workout scores
-            // Also require the number to be >= 60 if no colon (to avoid parsing "10" as 10 seconds)
-            const num = parseInt(trimmed.replace(':', ''), 10);
-            if (timeInSeconds !== null && timeInSeconds < 3600 &&
-                (timeInSeconds >= 10 || (trimmed.includes(':') && timeInSeconds >= 1)) &&
-                (trimmed.includes(':') || num >= 60)) { // Less than 1 hour (reasonable workout time)
+            if (timeInSeconds !== null && timeInSeconds < 3600) { // Less than 1 hour (reasonable workout time)
                 const scoreName = setIndex > 0
                     ? `Set ${setIndex}` as ScoreName
                     : roundIndex === 0
@@ -1550,18 +1260,6 @@ function parseScores(grid: GridData, timeCap?: number): ScoreElement[] {
             scoreLine = scoreLine.replace(/\d{1,2}\/\d{1,2}\/\d{2,4}/, '').trim();
         }
 
-        // Skip if this looks like a movement (has exercise name, not just numbers)
-        // Check for common exercise keywords that indicate this is a movement, not a score
-        // But don't skip if it's a score pattern like "rounds + reps" or has "@" for time cap
-        const hasExerciseKeyword = trimmed.match(/\b(deadlift|squat|press|clean|snatch|jerk|thruster|burpee|pull.?up|push.?up|muscle.?up|ring.?muscle.?up|toes.?to.?bar|kettlebell|dumbbell|barbell|wall.?ball|box.?jump|double.?under|single.?under|row|bike|run|ski|cal|du|wb|ctb|bjo|hpc|dl|sn|cj|fs|bs|ohs|pu|mu|rmu|t2b|t2r|kbs)\b/i);
-        const isScorePattern = trimmed.match(/rounds?\s*\+\s*\d+\s*reps?/i) ||
-            trimmed.match(/\d+\s*rds?\s*@/i) ||
-            (gridLine.length >= 2 && getGridColumn(gridLine, 1) === '@');
-        if (hasExerciseKeyword && !isScorePattern) {
-            // This is a movement line, not a score
-            continue;
-        }
-
         const repsMatch = scoreLine.match(/(\d+)\s*(?:rounds?)?\s*(?:\+\s*)?(\d+)?\s*(?:reps?)?/i);
         if (repsMatch) {
             const firstNum = parseInt(repsMatch[1], 10);
@@ -1586,8 +1284,7 @@ function parseScores(grid: GridData, timeCap?: number): ScoreElement[] {
             } else {
                 // Single number - could be total reps or rounds
                 // If it's a small number (< 20) and line says "rounds", it's rounds
-                // But skip if the line has exercise keywords (it's a movement, not a score)
-                if (trimmed.toLowerCase().includes('round') || (firstNum < 20 && !hasExerciseKeyword)) {
+                if (trimmed.toLowerCase().includes('round') || firstNum < 20) {
                     rounds = firstNum;
                     totalReps = firstNum; // Simplified
                 } else {
@@ -1596,17 +1293,11 @@ function parseScores(grid: GridData, timeCap?: number): ScoreElement[] {
                 }
             }
 
-            // Check if this is a time cap result (has "@" symbol, e.g., "9 rds @ 11min")
-            const isTimeCapResult = trimmed.includes('@') ||
-                (gridLine.length >= 2 && getGridColumn(gridLine, 1) === '@');
-
             const scoreName = setIndex > 0
                 ? `Set ${setIndex}` as ScoreName
-                : (isTimeCapResult && timeCap !== undefined)
-                    ? 'Time Cap' as ScoreName
-                    : roundIndex === 0
-                        ? 'Total' as ScoreName
-                        : `Round ${roundIndex}` as ScoreName;
+                : roundIndex === 0
+                    ? 'Total' as ScoreName
+                    : `Round ${roundIndex}` as ScoreName;
 
             scores.push({
                 name: scoreName,
@@ -1638,9 +1329,9 @@ function parseScores(grid: GridData, timeCap?: number): ScoreElement[] {
         }
     }
 
-    // If there's only one time score, rename it to "Finish Time" (regardless of current name)
+    // If there's only one time score and it's named "Round 1", rename it to "Finish Time"
     const timeScores = scores.filter(s => s.type === 'time');
-    if (timeScores.length === 1) {
+    if (timeScores.length === 1 && timeScores[0].name === 'Round 1') {
         timeScores[0].name = 'Finish Time' as ScoreName;
     }
 
@@ -1678,7 +1369,7 @@ function detectWorkoutType(title: string, movements: WorkoutElement[], scores: S
         return 'For Reps';
     }
 
-    return 'workout';
+    return 'Unknown';
 }
 
 /**
@@ -1686,13 +1377,13 @@ function detectWorkoutType(title: string, movements: WorkoutElement[], scores: S
  */
 function generateDescription(workoutType: string, movements: WorkoutElement[]): string {
     const templates: Record<string, string> = {
-        'AMRAP': 'An AMRAP with {movement1} and {movement2}.',
-        'EMOM': 'An {type} with {movement1} and {movement2}.',
-        'Chipper': 'A chipper with {movement1}, {movement2}, and {movement3}.',
-        'Rounds for Time': 'A {type} with {movement1} and {movement2}.',
-        'Lift': 'A {type} with {movement1}.',
-        'For Time': 'A {type} with {movement1} and {movement2}.',
-        'For Reps': 'A {type} with {movement1} and {movement2}.',
+        'AMRAP': 'A brutal AMRAP with {movement1} and {movement2}.',
+        'EMOM': 'An {type} with high output in {movement1} and {movement2}.',
+        'Chipper': 'A savage chipper that tested {movement1}, {movement2}, and {movement3}.',
+        'Rounds for Time': 'A fast-paced {type} with {movement1} and {movement2}.',
+        'Lift': 'Heavy {type} session with {movement1}.',
+        'For Time': 'A {type} that pushed the limits with {movement1} and {movement2}.',
+        'For Reps': 'A {type} that tested everything from {movement1} to {movement2}.',
     };
 
     // Extract movement names
@@ -1706,7 +1397,7 @@ function generateDescription(workoutType: string, movements: WorkoutElement[]): 
     }
 
     // Select template
-    const template = templates[workoutType] || `A workout with {movement1} and {movement2}.`;
+    const template = templates[workoutType] || `A {type} with {movement1} and {movement2}.`;
 
     // Fill template
     let description = template
@@ -1882,7 +1573,7 @@ function parseFromOCRData(ocrData: OCRData): WorkoutExtraction {
 /**
  * Main extraction function
  */
-export const workoutExtractorAlgorithmic = {
+export const workoutExtractorOCR = {
     async extract(imageBase64: string): Promise<WorkoutExtraction> {
         // Step 1: Text extraction using Gemini (OCR-like functionality)
         const ocrData = await extractTextWithGemini(imageBase64);
