@@ -76,11 +76,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Load from Supabase Auth session on mount
   useEffect(() => {
     // First, check for existing session to prevent initial flickering
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        updateUserFromSession(session);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      try {
+        if (session) {
+          await updateUserFromSession(session);
+        }
+      } catch (error) {
+        console.error('Failed to initialize user session:', error);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     });
 
     // Listen for auth state changes (including OAuth redirects)
