@@ -175,8 +175,8 @@ async function extractTextWithOpenAI(imageBase64: string): Promise<OCRData> {
         }
     }
 
-    let imageBuffer: Buffer = Buffer.from(base64Data, 'base64');
-    const originalSize = imageBuffer.length;
+    // Calculate approximate size from base64 string (base64 is ~33% larger than binary)
+    const originalSize = Math.floor(base64Data.length * 3 / 4);
     console.log(`  [Image Processing] Original size: ${(originalSize / 1024 / 1024).toFixed(2)}MB`);
 
     // Gemini supports HEIC natively, so we can pass it through directly
@@ -186,7 +186,7 @@ async function extractTextWithOpenAI(imageBase64: string): Promise<OCRData> {
     // Compress and resize images to reduce API payload size and improve performance
     // Note: HEIC requires libheif for sharp to process, so we skip compression for HEIC
     // and pass it directly to Gemini (which supports HEIC natively)
-    const imageSizeMB = imageBuffer.length / 1024 / 1024;
+    const imageSizeMB = originalSize / 1024 / 1024;
     const isHeic = mimeType === 'image/heic' || mimeType === 'image/heif';
 
     if (isHeic) {
@@ -200,16 +200,16 @@ async function extractTextWithOpenAI(imageBase64: string): Promise<OCRData> {
             const compressionStartTime = Date.now();
             console.log(`  [Image Compression] Compressing image (${imageSizeMB.toFixed(2)}MB, ${mimeType})...`);
             try {
-                const dataUrl = `data:${mimeType};base64,${imageBuffer.toString('base64')}`;
+                const dataUrl = `data:${mimeType};base64,${base64Data}`;
                 const compressedDataUrl = await compressImageInBrowser(dataUrl, 1920, 0.85);
                 const compressedBase64 = compressedDataUrl.split(',')[1];
-                const compressedBuffer = Buffer.from(compressedBase64, 'base64');
+                const compressedSize = Math.floor(compressedBase64.length * 3 / 4);
 
-                const compressionRatio = ((1 - compressedBuffer.length / imageBuffer.length) * 100).toFixed(1);
-                imageBuffer = compressedBuffer;
+                const compressionRatio = ((1 - compressedSize / originalSize) * 100).toFixed(1);
+                base64Data = compressedBase64;
                 mimeType = 'image/jpeg';
                 const compressionTime = Date.now() - compressionStartTime;
-                console.log(`  [Image Compression] ✓ Compressed (${(compressionTime / 1000).toFixed(2)}s, ${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB, ${compressionRatio}% reduction)`);
+                console.log(`  [Image Compression] ✓ Compressed (${(compressionTime / 1000).toFixed(2)}s, ${(compressedSize / 1024 / 1024).toFixed(2)}MB, ${compressionRatio}% reduction)`);
             } catch (compressionError) {
                 // If compression fails, log and continue with original
                 const errorMsg = compressionError instanceof Error ? compressionError.message : String(compressionError);
@@ -268,7 +268,7 @@ Output only the extracted text with pipes added.`;
                             {
                                 type: 'image_url',
                                 image_url: {
-                                    url: `data:${mimeType};base64,${imageBuffer.toString('base64')}`,
+                                    url: `data:${mimeType};base64,${base64Data}`,
                                 },
                             },
                         ],
@@ -360,8 +360,8 @@ async function extractTextWithGeminiAPI(imageBase64: string): Promise<OCRData> {
         }
     }
 
-    let imageBuffer: Buffer = Buffer.from(base64Data, 'base64');
-    const originalSize = imageBuffer.length;
+    // Calculate approximate size from base64 string (base64 is ~33% larger than binary)
+    const originalSize = Math.floor(base64Data.length * 3 / 4);
     console.log(`  [Image Processing] Original size: ${(originalSize / 1024 / 1024).toFixed(2)}MB`);
 
     // Gemini supports HEIC natively, so we can pass it through directly
@@ -371,7 +371,7 @@ async function extractTextWithGeminiAPI(imageBase64: string): Promise<OCRData> {
     // Compress and resize images to reduce API payload size and improve performance
     // Note: HEIC requires libheif for sharp to process, so we skip compression for HEIC
     // and pass it directly to Gemini (which supports HEIC natively)
-    const imageSizeMB = imageBuffer.length / 1024 / 1024;
+    const imageSizeMB = originalSize / 1024 / 1024;
     const isHeic = mimeType === 'image/heic' || mimeType === 'image/heif';
 
     if (isHeic) {
@@ -385,16 +385,16 @@ async function extractTextWithGeminiAPI(imageBase64: string): Promise<OCRData> {
             const compressionStartTime = Date.now();
             console.log(`  [Image Compression] Compressing image (${imageSizeMB.toFixed(2)}MB, ${mimeType})...`);
             try {
-                const dataUrl = `data:${mimeType};base64,${imageBuffer.toString('base64')}`;
+                const dataUrl = `data:${mimeType};base64,${base64Data}`;
                 const compressedDataUrl = await compressImageInBrowser(dataUrl, 1920, 0.85);
                 const compressedBase64 = compressedDataUrl.split(',')[1];
-                const compressedBuffer = Buffer.from(compressedBase64, 'base64');
+                const compressedSize = Math.floor(compressedBase64.length * 3 / 4);
 
-                const compressionRatio = ((1 - compressedBuffer.length / imageBuffer.length) * 100).toFixed(1);
-                imageBuffer = compressedBuffer;
+                const compressionRatio = ((1 - compressedSize / originalSize) * 100).toFixed(1);
+                base64Data = compressedBase64;
                 mimeType = 'image/jpeg';
                 const compressionTime = Date.now() - compressionStartTime;
-                console.log(`  [Image Compression] ✓ Compressed (${(compressionTime / 1000).toFixed(2)}s, ${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB, ${compressionRatio}% reduction)`);
+                console.log(`  [Image Compression] ✓ Compressed (${(compressionTime / 1000).toFixed(2)}s, ${(compressedSize / 1024 / 1024).toFixed(2)}MB, ${compressionRatio}% reduction)`);
             } catch (compressionError) {
                 // If compression fails, log and continue with original
                 const errorMsg = compressionError instanceof Error ? compressionError.message : String(compressionError);
@@ -479,7 +479,7 @@ Output only the extracted text with pipes added.`;
                     result = await model.generateContent([
                         {
                             inlineData: {
-                                data: imageBuffer.toString('base64'),
+                                data: base64Data,
                                 mimeType: mimeType,
                             },
                         },
