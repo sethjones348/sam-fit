@@ -444,8 +444,7 @@ async function extractTextWithGeminiAPI(imageBase64: string): Promise<OCRData> {
 Return the text exactly as written, preserving original line breaks and order.
 
 For each line:
-- Insert vertical pipes (|) between logical text groups on that line.
-- If a group is missing, still include the pipe.
+- Insert vertical pipes (|) between logical text groups (e.g., word | number | phrase) on that line.
 - Do not merge or split lines.
 - Do not infer meaning or reword text.
 
