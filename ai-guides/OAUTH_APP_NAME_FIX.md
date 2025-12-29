@@ -93,6 +93,33 @@ If after updating the app name it still shows the Supabase URL:
 - **Production Mode**: Branding verification is mandatory and can take several days for Google to review
 - **Why It Matters**: Without verified branding, Google shows the redirect URI domain instead of your app name
 
+## Common Verification Issues
+
+### Issue 1: "The website of your home page URL is not registered to you"
+
+Google needs to verify that you own the domain. To fix this:
+
+1. **Option A: Verify Domain Ownership in Google Search Console** (Recommended)
+   - Go to [Google Search Console](https://search.google.com/search-console)
+   - Add your property: `https://wodsapp.online`
+   - Verify ownership using one of these methods:
+     - **HTML file upload**: Download the verification file and add it to your site's root
+     - **HTML tag**: Add a meta tag to your site's `<head>`
+     - **DNS record**: Add a TXT record to your domain's DNS
+   - Once verified, wait 24-48 hours for Google to recognize the verification
+
+2. **Option B: Use Google Sites Verification**
+   - If you have access to your domain's DNS, you can add a TXT record for Google verification
+   - Check Google's domain verification documentation for the exact record to add
+
+### Issue 2: "Your home page URL does not include a link to your privacy policy"
+
+Google requires a visible link to your privacy policy on your home page. The privacy policy link has been added to:
+- ✅ Footer (visible on desktop)
+- ✅ Home page footer section (visible on all devices)
+
+Make sure the link is visible and accessible at `https://wodsapp.online/` before requesting re-verification.
+
 ## Quick Privacy Policy Solution
 
 If you need a privacy policy quickly, you can:
