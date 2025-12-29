@@ -1,7 +1,7 @@
-# SamFit Implementation Plan
+# WODsApp Implementation Plan
 
 ## Overview
-This document tracks the implementation progress of the SamFit workout logging application. Tasks are organized by phase and can be marked as complete as work progresses.
+This document tracks the implementation progress of the WODsApp workout logging application. Tasks are organized by phase and can be marked as complete as work progresses.
 
 ## Related Documentation
 - **Architecture**: `docs/architecture.md` - System architecture and technology decisions
@@ -115,7 +115,7 @@ This document tracks the implementation progress of the SamFit workout logging a
 ### 2.1 Google Drive API Integration
 - ⬜ Set up Google Drive API client
 - ⬜ Create `DriveStorage` service/utility
-- ⬜ Implement folder creation (`/SamFit/workouts/`)
+- ⬜ Implement folder creation (`/WODsApp/workouts/`)
 - ⬜ Implement file upload (JSON workout files)
 - ⬜ Implement file retrieval (get all workouts)
 - ⬜ Implement file update

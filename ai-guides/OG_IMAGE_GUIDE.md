@@ -2,7 +2,7 @@
 
 ## Current Setup
 
-I've added Open Graph meta tags to `index.html` that will create rich link previews when sharing SamFit links. The meta tags reference `og-image.png` which needs to be created.
+I've added Open Graph meta tags to `index.html` that will create rich link previews when sharing WODsApp links. The meta tags reference `og-image.png` which needs to be created.
 
 ## Creating the OG Image
 
@@ -21,7 +21,7 @@ You have a few options:
    - [og-image.vercel.app](https://og-image.vercel.app/)
    - [Canva](https://www.canva.com/) - Create a 1200x630px design
    - [Figma](https://www.figma.com/) - Design and export
-2. Use the SamFit branding:
+2. Use the WODsApp branding:
    - Background: Black gradient (#000000 to #1a1a1a)
    - Logo: "SAM" in white, "FIT" in CrossFit red (#E11931)
    - Font: Oswald (bold, large)
@@ -33,7 +33,7 @@ You have a few options:
 
 Create a 1200x630px image with:
 - **Background**: Black or dark gray gradient
-- **Logo**: "SAMFIT" with "SAM" in white and "FIT" in red (#E11931)
+- **Logo**: "WODsApp" with "WODs" in white and "App" in red (#E11931)
 - **Text**: "Workout Tracker" or similar tagline
 - **Style**: Clean, bold, CrossFit-inspired
 

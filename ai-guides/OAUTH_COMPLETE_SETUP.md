@@ -13,7 +13,7 @@ Go to: [OAuth Consent Screen](https://console.cloud.google.com/apis/credentials/
 
 **Required Settings:**
 - **User Type**: External (for personal use)
-- **App name**: SamFit
+- **App name**: WODsApp
 - **User support email**: Your email
 - **Developer contact information**: Your email
 

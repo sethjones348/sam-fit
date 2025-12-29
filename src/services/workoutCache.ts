@@ -14,7 +14,7 @@ let db: IDBPDatabase<WorkoutDB> | null = null;
 async function getDB(): Promise<IDBPDatabase<WorkoutDB>> {
   if (db) return db;
 
-  db = await openDB<WorkoutDB>('samfit-workouts', 1, {
+  db = await openDB<WorkoutDB>('wodsapp-workouts', 1, {
     upgrade(database) {
       const store = database.createObjectStore('workouts', {
         keyPath: 'id',

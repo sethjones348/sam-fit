@@ -115,7 +115,7 @@ export default function FeedPage() {
           <div className="w-24 h-24 bg-gradient-to-br from-cf-red to-cf-red-hover rounded-full flex items-center justify-center mx-auto mb-6">
             <span className="text-4xl">💪</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-heading font-bold mb-4">Welcome to SamFit</h1>
+          <h1 className="text-3xl sm:text-4xl font-heading font-bold mb-4">Welcome to WODsApp</h1>
           <p className="text-gray-600 mb-8 text-lg">
             Track your workouts, connect with friends, and stay motivated. Sign in to get started.
           </p>

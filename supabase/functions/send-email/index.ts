@@ -89,7 +89,7 @@ serve(async (req) => {
       );
     }
 
-    const fromAddress = from || 'SamFit <noreply@samfit.xyz>';
+    const fromAddress = from || 'WODsApp <noreply@samfit.xyz>';
     console.log('=== Attempting to send email ===');
     console.log('To:', to);
     console.log('From:', fromAddress);

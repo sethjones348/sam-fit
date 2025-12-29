@@ -1,6 +1,6 @@
 import { Workout } from '../types';
 
-const DRIVE_FOLDER_NAME = 'SamFit';
+const DRIVE_FOLDER_NAME = 'WODsApp';
 const DRIVE_WORKOUTS_FOLDER = 'workouts';
 
 let driveFolderId: string | null = null;

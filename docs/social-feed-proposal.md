@@ -2,7 +2,7 @@
 
 ## Overview
 
-Add a social feed feature to SamFit that allows users to follow friends, view their workouts in a feed, and interact through comments and reactions (fist bumps). This will transform SamFit from a personal workout tracker into a social fitness platform similar to Strava.
+Add a social feed feature to WODsApp that allows users to follow friends, view their workouts in a feed, and interact through comments and reactions (fist bumps). This will transform WODsApp from a personal workout tracker into a social fitness platform similar to Strava.
 
 ## Core Features
 
@@ -76,8 +76,8 @@ Add a social feed feature to SamFit that allows users to follow friends, view th
 **Solution**:
 - **Email-based invites only**: Users must know the email address of someone they want to follow
 - Send friend request by entering their email
-- If the email is associated with a SamFit account, they receive a friend request
-- If not, they can be invited to join SamFit
+- If the email is associated with a WODsApp account, they receive a friend request
+- If not, they can be invited to join WODsApp
 - No public user search or discovery - privacy-focused approach
 
 #### 3. Real-Time Updates

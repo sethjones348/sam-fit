@@ -1,6 +1,6 @@
 # Supabase Setup Guide
 
-This guide will help you set up Supabase for SamFit, including database schema, storage, and security policies.
+This guide will help you set up Supabase for WODsApp, including database schema, storage, and security policies.
 
 ## Prerequisites
 
@@ -13,7 +13,7 @@ This guide will help you set up Supabase for SamFit, including database schema, 
 1. Go to [supabase.com](https://supabase.com) and sign in
 2. Click "New Project"
 3. Fill in project details:
-   - **Name**: `sam-fit` (or your preferred name)
+   - **Name**: `wodsapp` (or your preferred name)
    - **Database Password**: Choose a strong password (save this!)
    - **Region**: Choose closest to your users
    - **Pricing Plan**: Free tier

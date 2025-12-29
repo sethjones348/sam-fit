@@ -13,7 +13,7 @@ After signing in with Google in production, users are redirected to `localhost:3
 4. Under **Redirect URLs**, add your production URL:
    - `https://yourdomain.com`
    - `https://yourdomain.com/*` (to allow all paths)
-   - If using GitHub Pages: `https://yourusername.github.io/sam-fit`
+   - If using GitHub Pages: `https://yourusername.github.io/wodsapp`
    - If using custom domain: `https://samfit.xyz` (or your domain)
 
 5. **Site URL** should also be set to your production URL:
@@ -59,13 +59,13 @@ If you're still being redirected to `localhost:3000`:
 
 ## Example Configuration
 
-For a GitHub Pages deployment at `https://sethjones348.github.io/sam-fit`:
+For a GitHub Pages deployment at `https://sethjones348.github.io/wodsapp`:
 
 **Supabase Dashboard → Authentication → URL Configuration:**
-- Site URL: `https://sethjones348.github.io/sam-fit`
+- Site URL: `https://sethjones348.github.io/wodsapp`
 - Redirect URLs:
-  - `https://sethjones348.github.io/sam-fit`
-  - `https://sethjones348.github.io/sam-fit/*`
+  - `https://sethjones348.github.io/wodsapp`
+  - `https://sethjones348.github.io/wodsapp/*`
 
 **Google Cloud Console → OAuth 2.0 Client ID:**
 - Authorized redirect URIs:

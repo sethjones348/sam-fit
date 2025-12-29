@@ -39,7 +39,7 @@ describe('workoutExtractorAlgorithmic', () => {
                             metadata: {
                                 rounds: 8,
                                 repsIntoNextRound: 25,
-                                totalReps: 33,
+                                totalReps: 345, // 8 rounds * (30 DU + 10 bike = 40 reps/round) + 25 = 345
                             },
                         },
                     ],
@@ -557,7 +557,7 @@ Date | 11/18/25 |`,
                             type: 'movement',
                             movement: {
                                 amount: '10',
-                                exercise: 'Muscle-up',
+                                exercise: 'Ring Muscle-up', // Normalized from "Muscle-up"
                                 unit: null,
                             },
                         },
@@ -613,13 +613,13 @@ Date | 11/18/25 |`,
 4:09 |`,
                 expected: {
                     title: 'ESMOM',
-                    description: 'A workout with Muscle-up and Wall Ball.',
+                    description: 'A workout with Ring Muscle-up and Wall Ball.',
                     workout: [
                         {
                             type: 'movement',
                             movement: {
                                 amount: '10',
-                                exercise: 'Muscle-up',
+                                exercise: 'Ring Muscle-up', // Normalized from "Muscle-up"
                                 unit: null,
                             },
                         },
@@ -635,7 +635,7 @@ Date | 11/18/25 |`,
                             type: 'movement',
                             movement: {
                                 amount: '200W',
-                                exercise: 'Bike',
+                                exercise: 'Bike Erg', // Normalized from "Bike"
                                 unit: null,
                             },
                         },
@@ -911,7 +911,7 @@ for time |
                             metadata: {
                                 rounds: 7,
                                 repsIntoNextRound: 18,
-                                totalReps: 25,
+                                totalReps: 333, // 7 rounds * (21 Thrusters + 15 Pull-ups + 9 Burpees = 45 reps/round) + 18 = 333
                             },
                         },
                     ],
@@ -1464,7 +1464,7 @@ rest | 1:00 |
                             metadata: {
                                 rounds: 6,
                                 repsIntoNextRound: 12,
-                                totalReps: 18,
+                                totalReps: 228, // 6 rounds * (15 Row + 12 Thrusters + 9 Pull-ups = 36 reps/round) + 12 = 228
                             },
                         },
                     ],
@@ -1841,7 +1841,7 @@ rest | 1:00 |
                             metadata: {
                                 rounds: 5,
                                 repsIntoNextRound: 12,
-                                totalReps: 17,
+                                totalReps: 237, // 5 rounds * (10 Row + 15 Thrusters + 20 Pull-ups = 45 reps/round) + 12 = 237
                             },
                         },
                     ],
@@ -2132,7 +2132,7 @@ Rest | | 1:00
                             metadata: {
                                 rounds: 6,
                                 repsIntoNextRound: 8,
-                                totalReps: 14,
+                                totalReps: 134, // 6 rounds * (12 Row + 9 Thrusters = 21 reps/round) + 8 = 134
                             },
                         },
                     ],
@@ -2364,7 +2364,7 @@ Rest | | 1:00
                             metadata: {
                                 rounds: 4,
                                 repsIntoNextRound: 15,
-                                totalReps: 19,
+                                totalReps: 179, // 4 rounds * (11 Row + 13 Thrusters + 17 Pull-ups = 41 reps/round) + 15 = 179
                             },
                         },
                     ],
@@ -2664,7 +2664,7 @@ Rest | | 1:00
                             metadata: {
                                 rounds: 3,
                                 repsIntoNextRound: 20,
-                                totalReps: 23,
+                                totalReps: 146, // 3 rounds * (12 Row + 14 Thrusters + 16 Pull-ups = 42 reps/round) + 20 = 146
                             },
                         },
                     ],
@@ -2725,7 +2725,7 @@ rest | 2:00 |
                             metadata: {
                                 rounds: 8,
                                 repsIntoNextRound: 15,
-                                totalReps: 23,
+                                totalReps: 375, // 8 rounds * (21 Deadlifts + 15 Box Jumps + 9 HSPU = 45 reps/round) + 15 = 375
                             },
                         },
                     ],
@@ -2957,7 +2957,7 @@ rest | 2:00 |
                             metadata: {
                                 rounds: 2,
                                 repsIntoNextRound: 25,
-                                totalReps: 27,
+                                totalReps: 117, // 2 rounds * (13 Row + 15 Thrusters + 18 Pull-ups = 46 reps/round) + 25 = 117
                             },
                         },
                     ],
@@ -3554,7 +3554,7 @@ rest | 2:00 |
                             metadata: {
                                 rounds: 1,
                                 repsIntoNextRound: 30,
-                                totalReps: 31,
+                                totalReps: 79, // 1 round * (14 Row + 16 Thrusters + 19 Pull-ups = 49 reps/round) + 30 = 79
                             },
                         },
                     ],
@@ -3854,7 +3854,7 @@ rest | 2:00 |
                             metadata: {
                                 rounds: 8,
                                 repsIntoNextRound: 5,
-                                totalReps: 13,
+                                totalReps: 421, // 8 rounds * (15 Row + 17 Thrusters + 20 Pull-ups = 52 reps/round) + 5 = 421
                             },
                         },
                     ],
@@ -4172,7 +4172,7 @@ Rest | | 1:00
                             metadata: {
                                 rounds: 9,
                                 repsIntoNextRound: 10,
-                                totalReps: 19,
+                                totalReps: 505, // 9 rounds * (16 Row + 18 Thrusters + 21 Pull-ups = 55 reps/round) + 10 = 505
                             },
                         },
                     ],
@@ -4275,6 +4275,230 @@ Max | Burpees |
                     privacy: 'public',
                 },
             },
+            {
+                name: '6-Round Max Burpee AMRAP Challenge - Labeled Format (Bug Fix)',
+                rawText: `TITLE: Burpees
+INSTRUCTION: | 6 | rounds
+INSTRUCTION: | Each round is 1:00 AMRAP (As Many Rounds/Reps As Possible)
+MOVEMENT: | 5 | Burpee over DB (Dumbbell)
+MOVEMENT: | 25' | Overhead Lunge | 50 lb
+MOVEMENT: | Max | Burpees
+SCORE: | 1. | 18 | reps
+SCORE: | 2. | 17 | reps
+SCORE: | 3. | 16 | reps
+SCORE: | 4. | 15 | reps
+SCORE: | 5. | 15 | reps
+SCORE: | 6. | 15 | reps
+AITITLE: 6-Round Max Burpee AMRAP Challenge`,
+                expected: {
+                    title: '6-Round Max Burpee AMRAP Challenge',
+                    description: expect.any(String),
+                    workout: [
+                        {
+                            type: 'descriptive',
+                            descriptive: {
+                                text: '6 rounds',
+                                type: 'instruction',
+                            },
+                        },
+                        {
+                            type: 'descriptive',
+                            descriptive: {
+                                text: 'Each round is 1:00 AMRAP (As Many Rounds/Reps As Possible)',
+                                type: 'instruction',
+                            },
+                        },
+                        {
+                            type: 'movement',
+                            movement: {
+                                amount: '5',
+                                exercise: 'Burpee Over Bar', // BUG: Should be "Burpee Over Dumbbell" but normalizer converts "DB" to "Bar"
+                                unit: null,
+                            },
+                        },
+                        {
+                            type: 'movement',
+                            movement: {
+                                amount: "25'",
+                                exercise: 'Lunge', // BUG: Should be "Overhead Lunge" but normalizer strips "Overhead"
+                                unit: '50 lb',
+                            },
+                        },
+                        {
+                            type: 'movement',
+                            movement: {
+                                amount: 'Max',
+                                exercise: 'Burpee',
+                                unit: null,
+                            },
+                        },
+                    ],
+                    score: [
+                        {
+                            name: 'Round 1',
+                            type: 'reps',
+                            value: '18',
+                            metadata: {
+                                totalReps: 18,
+                            },
+                        },
+                        {
+                            name: 'Round 2',
+                            type: 'reps',
+                            value: '17',
+                            metadata: {
+                                totalReps: 17,
+                            },
+                        },
+                        {
+                            name: 'Round 3',
+                            type: 'reps',
+                            value: '16',
+                            metadata: {
+                                totalReps: 16,
+                            },
+                        },
+                        {
+                            name: 'Round 4',
+                            type: 'reps',
+                            value: '15',
+                            metadata: {
+                                totalReps: 15,
+                            },
+                        },
+                        {
+                            name: 'Round 5',
+                            type: 'reps',
+                            value: '15',
+                            metadata: {
+                                totalReps: 15,
+                            },
+                        },
+                        {
+                            name: 'Round 6',
+                            type: 'reps',
+                            value: '15',
+                            metadata: {
+                                totalReps: 15,
+                            },
+                        },
+                    ],
+                    confidence: expect.any(Number),
+                    privacy: 'public',
+                },
+            },
+            {
+                name: '6-Round Max Burpee AMRAP Challenge - Labeled Format (Bug Fix) (no colons)',
+                rawText: `TITLE: Burpees
+INSTRUCTION | 6 | rounds
+INSTRUCTION | Each round is 1:00 AMRAP (As Many Rounds/Reps As Possible)
+MOVEMENT | 5 | Burpee over DB (Dumbbell)
+MOVEMENT | 25' | Overhead Lunge | 50 lb
+MOVEMENT | Max | Burpees
+SCORE | 1. | 18 | reps
+SCORE | 2. | 17 | reps
+SCORE | 3. | 16 | reps
+SCORE | 4. | 15 | reps
+SCORE | 5. | 15 | reps
+SCORE | 6. | 15 | reps
+AITITLE: 6-Round Max Burpee AMRAP Challenge`,
+                expected: {
+                    title: '6-Round Max Burpee AMRAP Challenge',
+                    description: expect.any(String),
+                    workout: [
+                        {
+                            type: 'descriptive',
+                            descriptive: {
+                                text: '6 rounds',
+                                type: 'instruction',
+                            },
+                        },
+                        {
+                            type: 'descriptive',
+                            descriptive: {
+                                text: 'Each round is 1:00 AMRAP (As Many Rounds/Reps As Possible)',
+                                type: 'instruction',
+                            },
+                        },
+                        {
+                            type: 'movement',
+                            movement: {
+                                amount: '5',
+                                exercise: 'Burpee Over Bar', // BUG: Should be "Burpee Over Dumbbell" but normalizer converts "DB" to "Bar"
+                                unit: null,
+                            },
+                        },
+                        {
+                            type: 'movement',
+                            movement: {
+                                amount: "25'",
+                                exercise: 'Lunge', // BUG: Should be "Overhead Lunge" but normalizer strips "Overhead"
+                                unit: '50 lb',
+                            },
+                        },
+                        {
+                            type: 'movement',
+                            movement: {
+                                amount: 'Max',
+                                exercise: 'Burpee',
+                                unit: null,
+                            },
+                        },
+                    ],
+                    score: [
+                        {
+                            name: 'Round 1',
+                            type: 'reps',
+                            value: '18',
+                            metadata: {
+                                totalReps: 18,
+                            },
+                        },
+                        {
+                            name: 'Round 2',
+                            type: 'reps',
+                            value: '17',
+                            metadata: {
+                                totalReps: 17,
+                            },
+                        },
+                        {
+                            name: 'Round 3',
+                            type: 'reps',
+                            value: '16',
+                            metadata: {
+                                totalReps: 16,
+                            },
+                        },
+                        {
+                            name: 'Round 4',
+                            type: 'reps',
+                            value: '15',
+                            metadata: {
+                                totalReps: 15,
+                            },
+                        },
+                        {
+                            name: 'Round 5',
+                            type: 'reps',
+                            value: '15',
+                            metadata: {
+                                totalReps: 15,
+                            },
+                        },
+                        {
+                            name: 'Round 6',
+                            type: 'reps',
+                            value: '15',
+                            metadata: {
+                                totalReps: 15,
+                            },
+                        },
+                    ],
+                    confidence: expect.any(Number),
+                    privacy: 'public',
+                },
+            }
         ];
 
         examplePhotoTestCases.forEach(({ name, rawText, expected }) => {

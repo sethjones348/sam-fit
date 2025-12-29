@@ -198,7 +198,7 @@ Output only the extracted text with pipes added.`;
     return `Extract all visible text from this image. The image shows a crossfit workout of the day (WOD) or lift written on a whiteboard.
 
 For each line:
-- Prefix the line with one label: TITLE, MOVEMENT, INSTRUCTION, or SCORE.
+- Prefix the line with one label: TITLE:, MOVEMENT:, INSTRUCTION:, or SCORE:.
 -Insert vertical pipes (|) between logical text groups; amount ( number, distance, time, watts, etc) | movement (common CrossFit exercises) | scale (weight, height, distance). 
 -Infer and insert missing or corrected information. Example: "3rvs" = "3 rounds" Example: lines with movement only may use amount from the line above. Example: line with amount only may be applied to lines below with movement only. Example: quotations = ditto of similar lines above.
 - Text that is visually off to the side or oriented vertically should be output as its own line.
@@ -619,16 +619,28 @@ async function extractTextWithGeminiAPI(imageBase64: string): Promise<OCRData> {
 /**
  * Parse a labeled line to extract label and content
  * Handles formats like "TITLE: AMRAP 10 min", "AITITLE: Every 5 Minutes on the Minute", or "MOVEMENT: 30 | Double Unders"
+ * Also handles labels without colons: "MOVEMENT 5 | Burpee" or "TITLE AMRAP 10 min"
  */
 function parseLabeledLine(line: string): { label: string | null; content: string } {
-    // Match label at start of line: "LABEL: content" or "LABEL:content"
-    const match = line.match(/^(TITLE|AITITLE|MOVEMENT|INSTRUCTION|SCORE):\s*(.+)$/);
+    // First try with colon: "LABEL: content" or "LABEL:content"
+    let match = line.match(/^(TITLE|AITITLE|MOVEMENT|INSTRUCTION|SCORE):\s*(.+)$/);
     if (match) {
         return {
             label: match[1],
             content: match[2].trim(),
         };
     }
+
+    // Try without colon: "LABEL content" (label must be followed by space and content)
+    // Match label at start followed by space and content (not just label alone)
+    match = line.match(/^(TITLE|AITITLE|MOVEMENT|INSTRUCTION|SCORE)\s+(.+)$/);
+    if (match) {
+        return {
+            label: match[1],
+            content: match[2].trim(),
+        };
+    }
+
     // No label found - return original line
     return {
         label: null,
@@ -650,12 +662,13 @@ function processExtractedText(rawText: string): OCRData {
 
         // Check if output has labels (smart prompt was used and AI followed format)
         // Legacy prompt doesn't use labels, so check if labels are present
+        // Check for labels both with and without colons (e.g., "MOVEMENT:" or "MOVEMENT ")
         const hasLabels = !useLegacyPrompt && (
-            cleanedText.includes('TITLE:') ||
-            cleanedText.includes('AITITLE:') ||
-            cleanedText.includes('MOVEMENT:') ||
-            cleanedText.includes('INSTRUCTION:') ||
-            cleanedText.includes('SCORE:')
+            cleanedText.includes('TITLE:') || cleanedText.match(/^TITLE\s+/m) ||
+            cleanedText.includes('AITITLE:') || cleanedText.match(/^AITITLE\s+/m) ||
+            cleanedText.includes('MOVEMENT:') || cleanedText.match(/^MOVEMENT\s+/m) ||
+            cleanedText.includes('INSTRUCTION:') || cleanedText.match(/^INSTRUCTION\s+/m) ||
+            cleanedText.includes('SCORE:') || cleanedText.match(/^SCORE\s+/m)
         );
 
         // Parse the text into lines

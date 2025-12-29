@@ -1,4 +1,4 @@
-# Sam Fit - Architecture Document
+# WODsApp - Architecture Document
 
 ## Overview
 A client-side only workout logging web application that allows users to upload photos of whiteboard workout notes, extract text using AI/OCR, and store/search workout history. Optimized for cost (essentially free) and single-user usage.
@@ -53,7 +53,7 @@ A client-side only workout logging web application that allows users to upload p
 **Implementation**:
 - Store each workout as a JSON file in a dedicated folder
 - File naming: `workout-{timestamp}-{id}.json`
-- Folder structure: `/SamFit/workouts/`
+- Folder structure: `/WODsApp/workouts/`
 - Each workout JSON contains:
   ```json
   {

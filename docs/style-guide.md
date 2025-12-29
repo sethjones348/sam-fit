@@ -1,7 +1,7 @@
-# SamFit Style Guide
+# WODsApp Style Guide
 ## Inspired by CrossFit.com Design Language
 
-This style guide defines the visual design system for SamFit, inspired by CrossFit's clean, bold, and athletic aesthetic.
+This style guide defines the visual design system for WODsApp, inspired by CrossFit's clean, bold, and athletic aesthetic.
 
 ## Color Palette
 

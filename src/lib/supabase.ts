@@ -46,7 +46,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     headers: {
-      'x-client-info': 'sam-fit@1.0.0',
+      'x-client-info': 'wodsapp@1.0.0',
     },
   },
 });

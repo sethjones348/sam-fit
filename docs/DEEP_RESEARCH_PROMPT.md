@@ -4,7 +4,7 @@
 Analyze and optimize a Gemini API prompt for extracting structured workout data from whiteboard photos. The goal is to improve accuracy, consistency, and reliability of extracting CrossFit workout information including movements, scores, and metadata.
 
 ## Problem Domain
-We are building a fitness tracking app (SamFit) that extracts workout data from photos of whiteboard workouts. Athletes write workouts on whiteboards with:
+We are building a fitness tracking app (WODsApp) that extracts workout data from photos of whiteboard workouts. Athletes write workouts on whiteboards with:
 - Workout title/name at the top
 - Movement prescriptions (amount, exercise, unit/weight)
 - Descriptive elements (rest periods, instructions)

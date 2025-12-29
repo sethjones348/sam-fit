@@ -2,7 +2,7 @@
 
 ## Overview
 
-The search functionality in SamFit allows users to search through their workouts by movement/exercise name or raw text content. The search is implemented as a **client-side, in-memory filter** that operates on workouts already loaded into the application state.
+The search functionality in WODsApp allows users to search through their workouts by movement/exercise name or raw text content. The search is implemented as a **client-side, in-memory filter** that operates on workouts already loaded into the application state.
 
 ## Architecture Components
 

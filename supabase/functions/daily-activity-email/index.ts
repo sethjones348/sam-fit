@@ -105,7 +105,7 @@ serve(async (req) => {
         const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-email', {
           body: {
             to: user.email,
-            subject: `Your SamFit Daily Summary - ${new Date().toLocaleDateString()}`,
+            subject: `Your WODsApp Daily Summary - ${new Date().toLocaleDateString()}`,
             html: generateEmailHTML(user.name || 'User', activitySummary),
           },
         });
@@ -211,12 +211,12 @@ function generateEmailHTML(userName: string, activity: any): string {
       </head>
       <body>
         <div class="header">
-          <h1 style="margin: 0; color: #fff;">Sam<span style="color: #D21034;">Fit</span></h1>
+          <h1 style="margin: 0; color: #fff;">WODs<span style="color: #D21034;">App</span></h1>
         </div>
         <div class="content">
           <h2>Your Daily Activity Summary</h2>
           <p>Hi ${userName},</p>
-          <p>Here's what happened on SamFit today:</p>
+          <p>Here's what happened on WODsApp today:</p>
           
           <div style="text-align: center; margin: 30px 0;">
             <div class="stat">
@@ -250,7 +250,7 @@ function generateEmailHTML(userName: string, activity: any): string {
           <div class="footer">
             <p>You're receiving this because you have email notifications enabled.</p>
             <p><a href="https://samfit.xyz/profile" style="color: #D21034;">Manage notification settings</a></p>
-            <p>&copy; ${new Date().getFullYear()} SamFit. All rights reserved.</p>
+            <p>&copy; ${new Date().getFullYear()} WODsApp. All rights reserved.</p>
           </div>
         </div>
       </body>

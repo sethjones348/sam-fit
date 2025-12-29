@@ -7,12 +7,13 @@ interface SendEmailOptions {
   from?: string;
 }
 
-// Base64 encoded SamFit logo (SF on black background)
-const SAMFIT_LOGO_BASE64 = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzAwMDAwMCIgcng9IjE1Ii8+CiAgPHRleHQgeD0iMTgiIHk9IjcwIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iNTgiIGZvbnQtd2VpZ2h0PSI5MDAiIGZpbGw9IiNGRkZGRkYiIGxldHRlci1zcGFjaW5nPSItMyIgc3Ryb2tlPSIjRkZGRkZGIiBzdHJva2Utd2lkdGg9IjAuNSI+UzwvdGV4dD4KICA8dGV4dCB4PSI1MCIgeT0iNzAiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI1OCIgZm9udC13ZWlnaHQ9IjkwMCIgZmlsbD0iI0UxMTkzMSIgbGV0dGVyLXNwYWNpbmc9Ii0zIiBzdHJva2U9IiNFMTE5MzEiIHN0cm9rZS13aWR0aD0iMC41Ij5GPC90ZXh0Pgo8L3N2Zz4=';
+// Base64 encoded WODsApp logo (WA on black background)
+// TODO: Regenerate logo with WODsApp branding
+const WODSAPP_LOGO_BASE64 = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzAwMDAwMCIgcng9IjE1Ii8+CiAgPHRleHQgeD0iMTgiIHk9IjcwIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iNTgiIGZvbnQtd2VpZ2h0PSI5MDAiIGZpbGw9IiNGRkZGRkYiIGxldHRlci1zcGFjaW5nPSItMyIgc3Ryb2tlPSIjRkZGRkZGIiBzdHJva2Utd2lkdGg9IjAuNSI+UzwvdGV4dD4KICA8dGV4dCB4PSI1MCIgeT0iNzAiIGZvbnQtZmFtaWl5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI1OCIgZm9udC13ZWlnaHQ9IjkwMCIgZmlsbD0iI0UxMTkzMSIgbGV0dGVyLXNwYWNpbmc9Ii0zIiBzdHJva2U9IiNFMTE5MzEiIHN0cm9rZS13aWR0aD0iMC41Ij5GPC90ZXh0Pgo8L3N2Zz4=';
 
 const EMAIL_HEADER_WITH_LOGO = `
-          <img src="${SAMFIT_LOGO_BASE64}" alt="SamFit" style="width: 40px; height: 40px; vertical-align: middle; margin-right: 10px; display: inline-block;" />
-          <h1 style="margin: 0; color: #fff; display: inline-block; vertical-align: middle;">Sam<span style="color: #D21034;">Fit</span></h1>
+          <img src="${WODSAPP_LOGO_BASE64}" alt="WODsApp" style="width: 40px; height: 40px; vertical-align: middle; margin-right: 10px; display: inline-block;" />
+          <h1 style="margin: 0; color: #fff; display: inline-block; vertical-align: middle;">WODs<span style="color: #D21034;">App</span></h1>
 `;
 
 /**
@@ -31,7 +32,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
       to: options.to,
       subject: options.subject,
       html: options.html,
-      from: options.from || 'SamFit <noreply@samfit.xyz>',
+      from: options.from || 'WODsApp <noreply@samfit.xyz>',
     },
   });
 
@@ -112,18 +113,18 @@ export async function sendFriendInviteEmail(
           ${EMAIL_HEADER_WITH_LOGO}
         </div>
         <div class="content">
-          <h2>You've been invited to join SamFit!</h2>
-          <p><strong>${inviterName}</strong> (${inviterEmail}) has invited you to connect on SamFit, a workout tracking app for CrossFit athletes.</p>
-          <p>Join SamFit to:</p>
+          <h2>You've been invited to join WODsApp!</h2>
+          <p><strong>${inviterName}</strong> (${inviterEmail}) has invited you to connect on WODsApp, a workout tracking app for CrossFit athletes.</p>
+          <p>Join WODsApp to:</p>
           <ul>
             <li>Track your workouts with AI-powered extraction</li>
             <li>Connect with friends and see their workouts</li>
             <li>Share your fitness journey</li>
           </ul>
-          <a href="https://samfit.xyz" class="button">Join SamFit</a>
+          <a href="https://samfit.xyz" class="button">Join WODsApp</a>
           <div class="footer">
             <p>If you didn't expect this invitation, you can safely ignore this email.</p>
-            <p>&copy; ${new Date().getFullYear()} SamFit. All rights reserved.</p>
+            <p>&copy; ${new Date().getFullYear()} WODsApp. All rights reserved.</p>
           </div>
         </div>
       </body>
@@ -132,7 +133,7 @@ export async function sendFriendInviteEmail(
 
   return sendEmail({
     to: toEmail,
-    subject: `${inviterName} invited you to join SamFit`,
+    subject: `${inviterName} invited you to join WODsApp`,
     html,
   });
 }
@@ -232,7 +233,7 @@ export async function sendDailyActivityEmail(
         <div class="content">
           <h2>Your Daily Activity Summary</h2>
           <p>Hi ${userName},</p>
-          <p>Here's what happened on SamFit today:</p>
+          <p>Here's what happened on WODsApp today:</p>
           
           <div style="text-align: center; margin: 30px 0;">
             <div class="stat">
@@ -266,7 +267,7 @@ export async function sendDailyActivityEmail(
           <div class="footer">
             <p>You're receiving this because you have email notifications enabled.</p>
             <p><a href="https://samfit.xyz/profile" style="color: #D21034;">Manage notification settings</a></p>
-            <p>&copy; ${new Date().getFullYear()} SamFit. All rights reserved.</p>
+            <p>&copy; ${new Date().getFullYear()} WODsApp. All rights reserved.</p>
           </div>
         </div>
       </body>
@@ -275,7 +276,7 @@ export async function sendDailyActivityEmail(
 
   return sendEmail({
     to: toEmail,
-    subject: `Your SamFit Daily Summary - ${new Date().toLocaleDateString()}`,
+    subject: `Your WODsApp Daily Summary - ${new Date().toLocaleDateString()}`,
     html,
   });
 }
@@ -365,7 +366,7 @@ export async function sendReactionNotificationEmail(
           <div class="footer">
             <p>You're receiving this because you have email notifications enabled.</p>
             <p><a href="https://samfit.xyz/profile" style="color: #D21034;">Manage notification settings</a></p>
-            <p>&copy; ${new Date().getFullYear()} SamFit. All rights reserved.</p>
+            <p>&copy; ${new Date().getFullYear()} WODsApp. All rights reserved.</p>
           </div>
         </div>
       </body>
@@ -463,7 +464,7 @@ export async function sendCommentNotificationEmail(
           <div class="footer">
             <p>You're receiving this because you have email notifications enabled.</p>
             <p><a href="https://samfit.xyz/profile" style="color: #D21034;">Manage notification settings</a></p>
-            <p>&copy; ${new Date().getFullYear()} SamFit. All rights reserved.</p>
+            <p>&copy; ${new Date().getFullYear()} WODsApp. All rights reserved.</p>
           </div>
         </div>
       </body>

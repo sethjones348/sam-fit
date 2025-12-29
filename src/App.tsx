@@ -15,8 +15,8 @@ import FeedPage from './pages/FeedPage';
 function getBasePath(): string {
   const pathname = window.location.pathname;
   // Check if we're on GitHub Pages subdirectory
-  if (pathname.startsWith('/sam-fit/')) {
-    return '/sam-fit';
+  if (pathname.startsWith('/wodsapp/')) {
+    return '/wodsapp';
   }
   // For custom domain or localhost, use root
   return '';

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SamFit - Workout Tracker</title>
+    <title>WODsApp - Workout Tracker</title>
     <script>
       // GitHub Pages 404 handler for React Router SPA
       // Redirects to index.html and preserves the route
@@ -14,11 +14,11 @@
         var base = '/';
         var route = path;
         
-        if (path.startsWith('/sam-fit/')) {
-          base = '/sam-fit/';
+        if (path.startsWith('/wodsapp/')) {
+          base = '/wodsapp/';
           route = path.replace(base, '');
-        } else if (path.startsWith('/sam-fit')) {
-          base = '/sam-fit/';
+        } else if (path.startsWith('/wodsapp')) {
+          base = '/wodsapp/';
           route = '/';
         } else {
           // Custom domain or root - use path as-is

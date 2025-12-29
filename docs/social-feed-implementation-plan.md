@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan outlines the step-by-step implementation of the social feed feature for SamFit, migrating from Google Drive to Supabase and adding friend connections, feed, comments, and reactions.
+This plan outlines the step-by-step implementation of the social feed feature for WODsApp, migrating from Google Drive to Supabase and adding friend connections, feed, comments, and reactions.
 
 ## Related Documentation
 

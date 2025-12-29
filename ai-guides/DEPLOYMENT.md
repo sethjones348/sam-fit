@@ -26,7 +26,7 @@
 
 5. **Deploy**: Push to `main` branch triggers automatic deployment via GitHub Actions
 
-Your app will be live at: `https://YOUR_USERNAME.github.io/sam-fit/`
+Your app will be live at: `https://YOUR_USERNAME.github.io/wodsapp/`
 
 ## Pre-Deployment Checklist
 
@@ -74,7 +74,7 @@ Update OAuth 2.0 credentials to include production URL:
    - Build the app
    - Deploy to GitHub Pages
 3. Check Actions tab for deployment status
-4. Your app will be live at: `https://YOUR_USERNAME.github.io/sam-fit/`
+4. Your app will be live at: `https://YOUR_USERNAME.github.io/wodsapp/`
 
 ### Manual Deployment
 If you need to deploy manually:
@@ -112,7 +112,7 @@ After deployment, update Google Cloud Console with your actual GitHub Pages URL:
 ## Troubleshooting
 
 ### Issue: Blank page after deployment
-**Solution**: Make sure `base: '/sam-fit/'` in `vite.config.ts` matches your repository name
+**Solution**: Make sure `base: '/wodsapp/'` in `vite.config.ts` matches your repository name
 
 ### Issue: 404 on refresh
 **Solution**: This is expected for SPAs on GitHub Pages. Users should navigate via app links, not by refreshing.
@@ -136,8 +136,8 @@ After deployment, update Google Cloud Console with your actual GitHub Pages URL:
 - **Recommended**: Use Repository Secrets instead of Environment Secrets for simplicity
 
 ## Repository Name
-If your repository is named something other than `sam-fit`, update:
-1. `vite.config.ts` - Change `base: '/sam-fit/'` to match your repo name
+If your repository is named something other than `wodsapp`, update:
+1. `vite.config.ts` - Change `base: '/wodsapp/'` to match your repo name
 2. Rebuild and redeploy
 
 ## Custom Domain (Optional)

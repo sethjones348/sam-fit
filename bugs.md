@@ -49,7 +49,7 @@ Getting `403 Forbidden` error when trying to access Google Drive API to create/f
 
 **Error**:
 ```
-GET https://www.googleapis.com/drive/v3/files?q=name='SamFit'... 403 (Forbidden)
+GET https://www.googleapis.com/drive/v3/files?q=name='WODsApp'... 403 (Forbidden)
 ```
 
 **Steps to Reproduce**:
@@ -59,7 +59,7 @@ GET https://www.googleapis.com/drive/v3/files?q=name='SamFit'... 403 (Forbidden)
 4. Error occurs
 
 **Expected Behavior**:
-Workout should be saved to Google Drive in a `SamFit/workouts/` folder.
+Workout should be saved to Google Drive in a `WODsApp/workouts/` folder.
 
 **Actual Behavior**:
 403 Forbidden error prevents Drive API access.

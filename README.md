@@ -1,4 +1,4 @@
-# SamFit - Workout Tracker
+# WODsApp - Workout Tracker
 
 A client-side workout logging application that extracts workout data from whiteboard photos using AI.
 
