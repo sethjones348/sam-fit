@@ -205,7 +205,7 @@ For each line:
 
 Label definitions:
 - TITLE: workout name or main heading (as written on whiteboard)
-- MOVEMENT: reps, exercises, weights, units, weights and units should be more numeric
+- MOVEMENT: reps, exercises, weights, units, reps, weights and units should be more numeric
 - INSTRUCTION: notes, rest, repeat, cues, descriptive text, these should be more readable
 - SCORE: times, rounds, + reps, dates, athlete scores
 
