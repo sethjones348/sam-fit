@@ -47,14 +47,6 @@ export default function WorkoutCard({ workout }: WorkoutCardProps) {
             </p>
           </div>
         )}
-
-        {workout.rawText.length > 0 && (
-          <div className="bg-gray-50 p-3 rounded border border-gray-200">
-            <p className="text-xs text-gray-600 font-mono line-clamp-3">
-              {workout.rawText.join(' | ')}
-            </p>
-          </div>
-        )}
       </Link>
       <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-end">
         <FistBumpButton workoutId={workout.id} />

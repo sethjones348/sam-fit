@@ -31,6 +31,7 @@ interface OCRData {
     }>;
     lines: string[]; // Just the text lines - we use grid structure for parsing, not spatial positions
     rawGeminiText?: string; // Raw text from Gemini API before processing
+    labels?: string[]; // Optional labels for each line (TITLE, MOVEMENT, INSTRUCTION, SCORE) when using smart prompt
 }
 
 // Removed LayoutAnalysis - we parse all lines and let parsers filter themselves
@@ -164,6 +165,62 @@ function getEnvVar(key: string): string | undefined {
 }
 
 /**
+ * Get text extraction prompt
+ * 
+ * Smart prompt (default): Leverages AI context and handles edge cases (abbreviations, dittos, missing amounts, etc.)
+ * Set USE_LEGACY_PROMPT=true to use the old prompt without labels or inference
+ */
+function getTextExtractionPrompt(): string {
+    const useLegacyPrompt = getEnvVar('USE_LEGACY_PROMPT') === 'true';
+
+    if (useLegacyPrompt) {
+        // Legacy prompt (old behavior - no labels, no inference)
+        return `Extract all visible text from this whiteboard image.
+
+Return the text exactly as written, preserving original line breaks and order.
+
+For each line:
+- Insert vertical pipes (|) between logical text groups (e.g., number | word | number ) on that line.
+- Do not merge or split lines.
+- Do not infer meaning or reword text.
+
+Rules:
+- No explanations
+- No comments
+- No markdown
+- Plain text only
+- One output line per original line
+
+Output only the extracted text with pipes added.`;
+    }
+
+    // Default: Smart prompt with labels and inference
+    return `Extract all visible text from this image. The image shows a crossfit workout of the day (WOD) or lift written on a whiteboard.
+
+For each line (or one additional line for AITITLE if applicable):
+- Prefix the line with one label: TITLE, MOVEMENT, INSTRUCTION, or SCORE.
+-Insert vertical pipes (|) between logical text groups; amount ( number, distance, time, watts, etc) | movement (common CrossFit exercises) | scale (weight, height, distance). 
+-Infer and insert missing or corrected information. Example: "3rvs" = "3 rounds" Example: lines with movement only may use amount from the line above. Example: line with amount only may be applied to lines below with movement only. Example: quotations = ditto of similar lines above.
+- Text that is visually off to the side or oriented vertically should be output as its own line.
+
+Label definitions:
+- TITLE: workout name or main heading (as written on whiteboard)
+- AITITLE: improved, descriptive workout title (optional - only include if you can create a better title than what's written)
+- MOVEMENT: reps, exercises, weights, units
+- INSTRUCTION: notes, rest, repeat, cues, descriptive text
+- SCORE: times, rounds, + reps, dates, athlete scores
+
+Rules:
+- Choose exactly one label per line.
+- No explanations
+- No comments
+- No markdown
+- Plain text only
+
+Output nothing except the labeled, piped text.`;
+}
+
+/**
  * Extract text from image using either OpenAI or Gemini (text extraction only)
  * 
  * Uses OpenAI GPT-4o-mini if USE_OPENAI=true, otherwise uses Gemini.
@@ -254,24 +311,9 @@ async function extractTextWithOpenAI(imageBase64: string): Promise<OCRData> {
         }
     }
 
-    // Prompt for text extraction with pipe delimiters for easier parsing
-    const TEXT_EXTRACTION_PROMPT = `Extract all visible text from this whiteboard image.
-
-Return the text exactly as written, preserving original line breaks and order.
-
-For each line:
-- Insert vertical pipes (|) between logical text groups (e.g., number | word | number ) on that line.
-- Do not merge or split lines.
-- Do not infer meaning or reword text.
-
-Rules:
-- No explanations
-- No comments
-- No markdown
-- Plain text only
-- One output line per original line
-
-Output only the extracted text with pipes added.`;
+    // Get prompt (smart prompt is default, legacy prompt if USE_LEGACY_PROMPT=true)
+    const TEXT_EXTRACTION_PROMPT = getTextExtractionPrompt();
+    const useLegacyPrompt = getEnvVar('USE_LEGACY_PROMPT') === 'true';
 
     // Use GPT-4o-mini for text extraction
     const modelName = 'gpt-4o-mini';
@@ -279,7 +321,7 @@ Output only the extracted text with pipes added.`;
     let apiCallStartTime: number | null = null;
     let totalRetries = 0;
 
-    console.log(`  [Text Extraction] Starting extraction with ${modelName}...`);
+    console.log(`  [Text Extraction] Starting extraction with ${modelName}${useLegacyPrompt ? ' (legacy prompt)' : ' (smart prompt)'}...`);
 
     // Retry logic for rate limits and errors
     let retries = 3;
@@ -438,24 +480,9 @@ async function extractTextWithGeminiAPI(imageBase64: string): Promise<OCRData> {
         }
     }
 
-    // Prompt for text extraction with pipe delimiters for easier parsing
-    const TEXT_EXTRACTION_PROMPT = `Extract all visible text from this whiteboard image.
-
-Return the text exactly as written, preserving original line breaks and order.
-
-For each line:
-- Insert vertical pipes (|) between logical text groups (e.g., word | number | phrase) on that line.
-- Do not merge or split lines.
-- Do not infer meaning or reword text.
-
-Rules:
-- No explanations
-- No comments
-- No markdown
-- Plain text only
-- One output line per original line
-
-Output only the extracted text with pipes added.`;
+    // Get prompt (smart prompt is default, legacy prompt if USE_LEGACY_PROMPT=true)
+    const TEXT_EXTRACTION_PROMPT = getTextExtractionPrompt();
+    const useLegacyPrompt = getEnvVar('USE_LEGACY_PROMPT') === 'true';
 
     // Try different model names with fallback
     const modelNames = [
@@ -493,7 +520,7 @@ Output only the extracted text with pipes added.`;
     let apiCallStartTime: number | null = null;
     let totalRetries = 0;
 
-    console.log(`  [Text Extraction] Starting extraction with ${modelNames.length} model(s) to try...`);
+    console.log(`  [Text Extraction] Starting extraction with ${modelNames.length} model(s) to try${useLegacyPrompt ? ' (legacy prompt)' : ' (smart prompt)'}...`);
 
     for (const modelName of modelNames) {
         try {
@@ -591,15 +618,70 @@ Output only the extracted text with pipes added.`;
 }
 
 /**
+ * Parse a labeled line to extract label and content
+ * Handles formats like "TITLE: AMRAP 10 min", "AITITLE: Every 5 Minutes on the Minute", or "MOVEMENT: 30 | Double Unders"
+ */
+function parseLabeledLine(line: string): { label: string | null; content: string } {
+    // Match label at start of line: "LABEL: content" or "LABEL:content"
+    const match = line.match(/^(TITLE|AITITLE|MOVEMENT|INSTRUCTION|SCORE):\s*(.+)$/);
+    if (match) {
+        return {
+            label: match[1],
+            content: match[2].trim(),
+        };
+    }
+    // No label found - return original line
+    return {
+        label: null,
+        content: line.trim(),
+    };
+}
+
+/**
  * Process extracted text into OCRData structure
+ * Handles both labeled (smart prompt) and unlabeled (default prompt) output
  */
 function processExtractedText(rawText: string): OCRData {
     try {
+        // Check if we're using legacy prompt (smart prompt is default)
+        const useLegacyPrompt = getEnvVar('USE_LEGACY_PROMPT') === 'true';
+
         // Clean up pipe placement before parsing
         const cleanedText = cleanGeminiPipeOutput(rawText);
 
+        // Check if output has labels (smart prompt was used and AI followed format)
+        // Legacy prompt doesn't use labels, so check if labels are present
+        const hasLabels = !useLegacyPrompt && (
+            cleanedText.includes('TITLE:') ||
+            cleanedText.includes('AITITLE:') ||
+            cleanedText.includes('MOVEMENT:') ||
+            cleanedText.includes('INSTRUCTION:') ||
+            cleanedText.includes('SCORE:')
+        );
+
         // Parse the text into lines
-        const textLines = cleanedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+        const rawLines = cleanedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+        // Extract labels and content
+        const labels: string[] = [];
+        const textLines: string[] = [];
+
+        for (const line of rawLines) {
+            if (hasLabels) {
+                const { label, content } = parseLabeledLine(line);
+                if (label) {
+                    labels.push(label);
+                    textLines.push(content);
+                } else {
+                    // Line without label - keep as is, label as null
+                    labels.push('');
+                    textLines.push(content);
+                }
+            } else {
+                // No labels - just use the line as-is
+                textLines.push(line);
+            }
+        }
 
         // Create OCRData structure from extracted text
         // We only need text lines and word confidence - grid structure handles parsing
@@ -610,12 +692,19 @@ function processExtractedText(rawText: string): OCRData {
                 confidence: 0.95, // High confidence since AI extracted it
             }));
 
-        return {
+        const result: OCRData = {
             text: textLines.join('\n'),
             words,
-            lines: textLines, // Just the text lines
+            lines: textLines, // Just the text lines (labels stripped)
             rawGeminiText: rawText, // Store raw text from Gemini/OpenAI for debugging
         };
+
+        // Add labels if we have them
+        if (hasLabels && labels.length > 0) {
+            result.labels = labels;
+        }
+
+        return result;
     } catch (error) {
         // This catch block is for parsing errors after successful text extraction
         throw new Error(`Failed to parse extracted text: ${error instanceof Error ? error.message : String(error)}`);
@@ -685,12 +774,34 @@ function getAllLines(ocrData: OCRData): string[] {
 }
 
 /**
- * Parse workout title from the first grid line
+ * Parse workout title from AITITLE (preferred), TITLE-labeled lines, or first grid line
  * Also extracts metadata like time cap, EMOM period, sets info
  */
-function parseTitle(grid: GridData): { title: string; timeCap?: number; emomPeriod?: number; setsInfo?: { sets: number; rounds: number } } {
-    // Title is always the first grid line - join all columns with spaces
-    const titleLine = grid[0]?.join(' ') || 'Workout';
+function parseTitle(grid: GridData, labels?: string[]): { title: string; timeCap?: number; emomPeriod?: number; setsInfo?: { sets: number; rounds: number } } {
+    // If we have labels, check for AITITLE first (preferred), then TITLE
+    let titleLine: string;
+    let useAITitle = false;
+
+    if (labels && labels.length > 0) {
+        // First, check for AITITLE (AI-generated improved title)
+        const aiTitleIndex = labels.findIndex(label => label === 'AITITLE');
+        if (aiTitleIndex >= 0 && aiTitleIndex < grid.length) {
+            titleLine = grid[aiTitleIndex]?.join(' ') || 'Workout';
+            useAITitle = true;
+        } else {
+            // Fallback: check for TITLE label
+            const titleIndex = labels.findIndex(label => label === 'TITLE');
+            if (titleIndex >= 0 && titleIndex < grid.length) {
+                titleLine = grid[titleIndex]?.join(' ') || 'Workout';
+            } else {
+                // Fallback: use first line if no TITLE/AITITLE label found
+                titleLine = grid[0]?.join(' ') || 'Workout';
+            }
+        }
+    } else {
+        // No labels - title is always the first grid line
+        titleLine = grid[0]?.join(' ') || 'Workout';
+    }
 
     // Clean title: remove pipes and extra whitespace, fix encoding issues
     let title = titleLine
@@ -741,8 +852,9 @@ function parseTitle(grid: GridData): { title: string; timeCap?: number; emomPeri
         };
     }
 
-    // If title is just a code (like "E5MOM"), we'll infer a better title later
-    if (title.match(/^E\d+MOM$/i) || title.match(/^(AMRAP|EMOM|CHIPPER)$/i)) {
+    // If AITITLE was used, skip title improvement (AI already improved it)
+    // Otherwise, if title is just a code (like "E5MOM"), we'll infer a better title later
+    if (!useAITitle && (title.match(/^E\d+MOM$/i) || title.match(/^(AMRAP|EMOM|CHIPPER)$/i))) {
         result.title = title; // Will be improved during type detection
     }
 
@@ -751,160 +863,180 @@ function parseTitle(grid: GridData): { title: string; timeCap?: number; emomPeri
 
 /**
  * Parse movements from grid data
- * Skips the first line (title)
+ * Skips the first line (title) or uses labels to filter lines
  */
-function parseMovements(grid: GridData): WorkoutElement[] {
+function parseMovements(grid: GridData, labels?: string[]): WorkoutElement[] {
     const elements: WorkoutElement[] = [];
-
-    // Skip the first line (title) when parsing movements
-    const movementGrids = grid.slice(1);
 
     // Track pending pyramid/ladder rep scheme to associate with next movement
     let pendingAmount: string | null = null;
 
-    for (let i = 0; i < movementGrids.length; i++) {
-        const gridLine = movementGrids[i];
+    // Iterate through all grid lines
+    for (let i = 0; i < grid.length; i++) {
+        const gridLine = grid[i];
         if (!gridLine || gridLine.length === 0) continue;
+
+        // Get label for this line if available
+        const hasLabels = labels && labels.length > i;
+        const lineLabel = hasLabels ? labels![i] : null;
+
+        // If we have labels, only process MOVEMENT and INSTRUCTION lines
+        // Skip TITLE, AITITLE, and SCORE lines
+        if (hasLabels) {
+            if (lineLabel === 'TITLE' || lineLabel === 'AITITLE' || lineLabel === 'SCORE') {
+                continue; // Skip title and score lines
+            }
+            // Process MOVEMENT and INSTRUCTION lines
+            // With labels, we can trust AI has already categorized correctly
+        } else if (i === 0) {
+            // No labels - skip the first line (title) when parsing movements
+            continue;
+        }
 
         const firstColumn = getGridColumn(gridLine, 0);
         // Join non-empty columns with spaces (pipes are just delimiters, not part of the content)
         const trimmed = gridLine.filter(col => col && col.trim().length > 0).join(' ');
 
-        // Check if this is a pyramid/ladder rep scheme on its own line (e.g., "1-2-3-4-5-5-4-3-2-1")
-        // Store it to use with the next movement
-        if (gridLine.length === 1 && firstColumn.match(/^(\d+(?:-\d+)+)$/)) {
-            pendingAmount = firstColumn;
-            continue; // Skip this line, use the amount for the next movement
-        }
+        // With labels, skip classification logic - AI has already categorized
+        // Without labels, do full classification
+        if (!hasLabels) {
+            // Check if this is a pyramid/ladder rep scheme on its own line (e.g., "1-2-3-4-5-5-4-3-2-1")
+            // Store it to use with the next movement
+            if (gridLine.length === 1 && firstColumn.match(/^(\d+(?:-\d+)+)$/)) {
+                pendingAmount = firstColumn;
+                continue; // Skip this line, use the amount for the next movement
+            }
 
-        // Skip lines that are clearly not movements (like section headers)
-        // But don't skip "rest" here - we'll handle it as a descriptive element below
-        if (firstColumn.match(/^(workout|score|rounds?|sets?|time|reps?)$/i)) {
-            continue;
-        }
-
-        // Check for lines starting with "-" (e.g., "-building", "- 2:00 Clock", "-rest | 3:00 | btwn-")
-        // These are descriptive instruction elements
-        if (firstColumn.startsWith('-') || trimmed.startsWith('-')) {
-            const cleanTextParts = gridLine.filter(col => col && col.trim().length > 0);
-            const cleanText = cleanTextParts.join(' ');
-
-            // Check if it contains "rest" with a time - extract duration but keep as instruction
-            const restTimeMatch = cleanText.match(/rest\s+(\d{1,2}):(\d{2})/i);
-            const duration = restTimeMatch ?
-                parseInt(restTimeMatch[1], 10) * 60 + parseInt(restTimeMatch[2], 10) :
-                undefined;
-
-            elements.push({
-                type: 'descriptive',
-                descriptive: {
-                    text: cleanText,
-                    type: 'instruction', // Always instruction for lines starting with "-"
-                    duration: duration,
-                },
-            });
-            continue;
-        }
-
-        // Check for "X Sets" or "X Rounds" pattern (e.g., "3 Sets", "4 Rounds")
-        // These are descriptive elements indicating set/round count, not movements
-        const setsRoundsMatch = trimmed.match(/^(\d+)\s+(sets?|rounds?)$/i);
-        if (setsRoundsMatch) {
-            // Create descriptive element for set/round count
-            const cleanTextParts = gridLine.filter(col => col && col.trim().length > 0);
-            const cleanText = cleanTextParts.join(' ');
-            elements.push({
-                type: 'descriptive',
-                descriptive: {
-                    text: cleanText,
-                    type: 'instruction',
-                },
-            });
-            continue;
-        }
-
-        // Skip lines that look like scores (contain "+" with numbers, dates, etc.)
-        // Patterns like "8 + 25", "3 rounds + 15 reps", "11/16/25" (dates)
-        // Also handle grid format: "5 | + | 12"
-        if (trimmed.match(/\d+\s*\+\s*\d+/) ||
-            (gridLine.length >= 3 && getGridColumn(gridLine, 1) === '+' &&
-                !isNaN(parseInt(getGridColumn(gridLine, 0), 10)) &&
-                !isNaN(parseInt(getGridColumn(gridLine, 2), 10)))) {
-            // Has "number + number" pattern - likely a score, not a movement
-            continue;
-        }
-        if (trimmed.match(/\d{1,2}\/\d{1,2}\/\d{2,4}/)) {
-            // Has date pattern (MM/DD/YY or MM/DD/YYYY) - likely metadata, not a movement
-            continue;
-        }
-        if (trimmed.match(/rounds?\s*\+\s*\d+\s*reps?/i)) {
-            // Has "rounds + reps" pattern - definitely a score
-            continue;
-        }
-        // Skip numbered score lines (e.g., "1. | 18 |", "2. | 17 |")
-        // Pattern: number followed by period, then a number
-        if (gridLine.length >= 2) {
-            const col0 = getGridColumn(gridLine, 0);
-            const col1 = getGridColumn(gridLine, 1);
-            // Check if col0 is "N." (number with period) and col1 is a number
-            if (col0.match(/^\d+\.$/) && col1 && !isNaN(parseInt(col1, 10))) {
-                // This is a numbered score line, not a movement
+            // Skip lines that are clearly not movements (like section headers)
+            // But don't skip "rest" here - we'll handle it as a descriptive element below
+            if (firstColumn.match(/^(workout|score|rounds?|sets?|time|reps?)$/i)) {
                 continue;
             }
         }
-        // Skip lines with "@" symbol that indicate time cap results (e.g., "9 rds | @ | 11min")
-        // Pattern: number + "rds" + "@" + time = rounds completed at time cap
-        if (trimmed.match(/\d+\s*rds?\s*@/i) ||
-            (gridLine.length >= 3 &&
-                getGridColumn(gridLine, 0).match(/^\d+\s*rds?$/i) &&
-                getGridColumn(gridLine, 1) === '@')) {
-            // This is a score showing rounds at time cap, not a movement
-            continue;
+
+        // With labels, skip score classification - AI has already filtered them out
+        // Without labels, do full classification to filter out scores
+        if (!hasLabels) {
+            // Check for lines starting with "-" (e.g., "-building", "- 2:00 Clock", "-rest | 3:00 | btwn-")
+            // These are descriptive instruction elements
+            if (firstColumn.startsWith('-') || trimmed.startsWith('-')) {
+                const cleanTextParts = gridLine.filter(col => col && col.trim().length > 0);
+                const cleanText = cleanTextParts.join(' ');
+
+                // Check if it contains "rest" with a time - extract duration but keep as instruction
+                const restTimeMatch = cleanText.match(/rest\s+(\d{1,2}):(\d{2})/i);
+                const duration = restTimeMatch ?
+                    parseInt(restTimeMatch[1], 10) * 60 + parseInt(restTimeMatch[2], 10) :
+                    undefined;
+
+                elements.push({
+                    type: 'descriptive',
+                    descriptive: {
+                        text: cleanText,
+                        type: 'instruction', // Always instruction for lines starting with "-"
+                        duration: duration,
+                    },
+                });
+                continue;
+            }
+
+            // Check for "X Sets" or "X Rounds" pattern (e.g., "3 Sets", "4 Rounds")
+            // These are descriptive elements indicating set/round count, not movements
+            const setsRoundsMatch = trimmed.match(/^(\d+)\s+(sets?|rounds?)$/i);
+            if (setsRoundsMatch) {
+                // Create descriptive element for set/round count
+                const cleanTextParts = gridLine.filter(col => col && col.trim().length > 0);
+                const cleanText = cleanTextParts.join(' ');
+                elements.push({
+                    type: 'descriptive',
+                    descriptive: {
+                        text: cleanText,
+                        type: 'instruction',
+                    },
+                });
+                continue;
+            }
+
+            // Skip lines that look like scores (contain "+" with numbers, dates, etc.)
+            // Patterns like "8 + 25", "3 rounds + 15 reps", "11/16/25" (dates)
+            // Also handle grid format: "5 | + | 12"
+            if (trimmed.match(/\d+\s*\+\s*\d+/) ||
+                (gridLine.length >= 3 && getGridColumn(gridLine, 1) === '+' &&
+                    !isNaN(parseInt(getGridColumn(gridLine, 0), 10)) &&
+                    !isNaN(parseInt(getGridColumn(gridLine, 2), 10)))) {
+                // Has "number + number" pattern - likely a score, not a movement
+                continue;
+            }
+            if (trimmed.match(/\d{1,2}\/\d{1,2}\/\d{2,4}/)) {
+                // Has date pattern (MM/DD/YY or MM/DD/YYYY) - likely metadata, not a movement
+                continue;
+            }
+            if (trimmed.match(/rounds?\s*\+\s*\d+\s*reps?/i)) {
+                // Has "rounds + reps" pattern - definitely a score
+                continue;
+            }
+            // Skip numbered score lines (e.g., "1. | 18 |", "2. | 17 |")
+            // Pattern: number followed by period, then a number
+            if (gridLine.length >= 2) {
+                const col0 = getGridColumn(gridLine, 0);
+                const col1 = getGridColumn(gridLine, 1);
+                // Check if col0 is "N." (number with period) and col1 is a number
+                if (col0.match(/^\d+\.$/) && col1 && !isNaN(parseInt(col1, 10))) {
+                    // This is a numbered score line, not a movement
+                    continue;
+                }
+            }
+            // Skip lines with "@" symbol that indicate time cap results (e.g., "9 rds | @ | 11min")
+            // Pattern: number + "rds" + "@" + time = rounds completed at time cap
+            if (trimmed.match(/\d+\s*rds?\s*@/i) ||
+                (gridLine.length >= 3 &&
+                    getGridColumn(gridLine, 0).match(/^\d+\s*rds?$/i) &&
+                    getGridColumn(gridLine, 1) === '@')) {
+                // This is a score showing rounds at time cap, not a movement
+                continue;
+            }
         }
 
-        // Check for rest/descriptive elements FIRST (before grid parsing)
-        // This prevents "rest | 1:00 |" or "1:00 | rest" from being parsed as movement or score
-        // Also handles "@ | 8:00 |" as a descriptive element
+        // Handle INSTRUCTION labeled lines (rest, repeat, cues, etc.)
+        // With labels, we know these are instructions, so parse them directly
+        if (hasLabels && lineLabel === 'INSTRUCTION') {
+            // Parse instruction/rest elements
+            const cleanTextParts = gridLine.filter(col => col && col.trim().length > 0);
+            const cleanText = cleanTextParts.join(' ');
 
-        // Check for "rest" keyword at the start
-        const restMatch = trimmed.match(/^(rest|repeat|then|and)\s*(.*)/i);
-        // Also check for reversed format: "1:00 | rest" (time first, then rest keyword)
-        const reversedRestMatch = trimmed.match(/^(\d{1,2}:\d{2})\s+(rest|repeat|then|and)/i) ||
-            (gridLine.length >= 2 &&
-                getGridColumn(gridLine, 0).match(/^\d{1,2}:\d{2}$/) &&
-                getGridColumn(gridLine, 1).match(/^(rest|repeat|then|and)$/i));
+            // Check for "rest" keyword
+            const restMatch = cleanText.match(/^(rest|repeat|then|and)\s*(.*)/i);
+            const reversedRestMatch = cleanText.match(/^(\d{1,2}:\d{2})\s+(rest|repeat|then|and)/i) ||
+                (gridLine.length >= 2 &&
+                    getGridColumn(gridLine, 0).match(/^\d{1,2}:\d{2}$/) &&
+                    getGridColumn(gridLine, 1).match(/^(rest|repeat|then|and)$/i));
 
-        if (restMatch || reversedRestMatch) {
             let keyword: string = '';
             let duration: number | null = null;
 
             if (restMatch) {
-                // Standard format: "rest | 1:00" or "rest 1:00"
-                keyword = restMatch[1].toLowerCase(); // Normalize to lowercase
-                duration = parseRestDuration(trimmed);
+                keyword = restMatch[1].toLowerCase();
+                duration = parseRestDuration(cleanText);
                 if (!duration && gridLine.length >= 3) {
-                    // Check grid columns for time (e.g., col2 might have "1:00")
                     const timeCol = getGridColumn(gridLine, 2) || getGridColumn(gridLine, 1);
                     if (timeCol) {
                         duration = parseRestDuration(`rest ${timeCol}`);
                     }
                 }
             } else if (reversedRestMatch) {
-                // Reversed format: "1:00 | rest" (time first, then rest)
                 const timeStr = getGridColumn(gridLine, 0);
                 keyword = getGridColumn(gridLine, 1).toLowerCase();
-                // Parse the time (e.g., "1:00" = 60 seconds)
                 const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})/);
                 if (timeMatch) {
                     const minutes = parseInt(timeMatch[1], 10);
                     const seconds = parseInt(timeMatch[2], 10);
                     duration = minutes * 60 + seconds;
                 }
+            } else if (firstColumn === '@' || cleanText.match(/^@\s*\|/)) {
+                // "@" symbol instruction
+                const timeMatch = cleanText.match(/(\d{1,2}):(\d{2})/);
+                duration = timeMatch ? parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10) : null;
             }
-
-            // Create clean text without pipes - join non-empty columns with spaces
-            const cleanTextParts = gridLine.filter(col => col && col.trim().length > 0);
-            const cleanText = cleanTextParts.join(' ');
 
             elements.push({
                 type: 'descriptive',
@@ -912,39 +1044,99 @@ function parseMovements(grid: GridData): WorkoutElement[] {
                     text: cleanText,
                     type: keyword === 'rest' ? 'rest' :
                         keyword === 'repeat' ? 'repeat' :
-                            keyword === 'then' || keyword === 'and' ? 'instruction' : null,
+                            keyword === 'then' || keyword === 'and' ? 'instruction' : 'instruction',
                     duration: duration || undefined,
                 },
             });
             continue;
         }
 
-        // Check for "@" symbol as descriptive element (e.g., "@ | 8:00 |")
-        if (firstColumn === '@' || trimmed.match(/^@\s*\|/)) {
-            // Extract time if present
-            const timeMatch = trimmed.match(/(\d{1,2}):(\d{2})/);
-            const duration = timeMatch ? parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10) : undefined;
+        // Without labels, do full classification for rest/descriptive elements
+        if (!hasLabels) {
+            // Check for rest/descriptive elements FIRST (before grid parsing)
+            // This prevents "rest | 1:00 |" or "1:00 | rest" from being parsed as movement or score
+            // Also handles "@ | 8:00 |" as a descriptive element
 
-            // Create clean text without pipes - join non-empty columns with spaces
-            const cleanTextParts = gridLine.filter(col => col && col.trim().length > 0);
-            const cleanText = cleanTextParts.join(' ');
+            // Check for "rest" keyword at the start
+            const restMatch = trimmed.match(/^(rest|repeat|then|and)\s*(.*)/i);
+            // Also check for reversed format: "1:00 | rest" (time first, then rest keyword)
+            const reversedRestMatch = trimmed.match(/^(\d{1,2}:\d{2})\s+(rest|repeat|then|and)/i) ||
+                (gridLine.length >= 2 &&
+                    getGridColumn(gridLine, 0).match(/^\d{1,2}:\d{2}$/) &&
+                    getGridColumn(gridLine, 1).match(/^(rest|repeat|then|and)$/i));
 
-            elements.push({
-                type: 'descriptive',
-                descriptive: {
-                    text: cleanText,
-                    type: 'instruction',
-                    duration: duration,
-                },
-            });
-            continue;
-        }
+            if (restMatch || reversedRestMatch) {
+                let keyword: string = '';
+                let duration: number | null = null;
 
-        // Skip time-only lines (e.g., "1:38 |", "2:22 |") - these are scores, not movements
-        if (gridLine.length === 1 || (gridLine.length === 2 && getGridColumn(gridLine, 1).trim() === '')) {
-            const timeOnlyMatch = firstColumn.match(/^(\d{1,2}):(\d{2})$/);
-            if (timeOnlyMatch) {
-                continue; // This is a score line, not a movement
+                if (restMatch) {
+                    // Standard format: "rest | 1:00" or "rest 1:00"
+                    keyword = restMatch[1].toLowerCase(); // Normalize to lowercase
+                    duration = parseRestDuration(trimmed);
+                    if (!duration && gridLine.length >= 3) {
+                        // Check grid columns for time (e.g., col2 might have "1:00")
+                        const timeCol = getGridColumn(gridLine, 2) || getGridColumn(gridLine, 1);
+                        if (timeCol) {
+                            duration = parseRestDuration(`rest ${timeCol}`);
+                        }
+                    }
+                } else if (reversedRestMatch) {
+                    // Reversed format: "1:00 | rest" (time first, then rest)
+                    const timeStr = getGridColumn(gridLine, 0);
+                    keyword = getGridColumn(gridLine, 1).toLowerCase();
+                    // Parse the time (e.g., "1:00" = 60 seconds)
+                    const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})/);
+                    if (timeMatch) {
+                        const minutes = parseInt(timeMatch[1], 10);
+                        const seconds = parseInt(timeMatch[2], 10);
+                        duration = minutes * 60 + seconds;
+                    }
+                }
+
+                // Create clean text without pipes - join non-empty columns with spaces
+                const cleanTextParts = gridLine.filter(col => col && col.trim().length > 0);
+                const cleanText = cleanTextParts.join(' ');
+
+                elements.push({
+                    type: 'descriptive',
+                    descriptive: {
+                        text: cleanText,
+                        type: keyword === 'rest' ? 'rest' :
+                            keyword === 'repeat' ? 'repeat' :
+                                keyword === 'then' || keyword === 'and' ? 'instruction' : null,
+                        duration: duration || undefined,
+                    },
+                });
+                continue;
+            }
+
+            // Check for "@" symbol as descriptive element (e.g., "@ | 8:00 |")
+            if (firstColumn === '@' || trimmed.match(/^@\s*\|/)) {
+                // Extract time if present
+                const timeMatch = trimmed.match(/(\d{1,2}):(\d{2})/);
+                const duration = timeMatch ? parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10) : undefined;
+
+                // Create clean text without pipes - join non-empty columns with spaces
+                const cleanTextParts = gridLine.filter(col => col && col.trim().length > 0);
+                const cleanText = cleanTextParts.join(' ');
+
+                elements.push({
+                    type: 'descriptive',
+                    descriptive: {
+                        text: cleanText,
+                        type: 'instruction',
+                        duration: duration,
+                    },
+                });
+                continue;
+            }
+
+            // Skip time-only lines (e.g., "1:38 |", "2:22 |") - these are scores, not movements
+            if (gridLine.length === 1 || (gridLine.length === 2 && getGridColumn(gridLine, 1).trim() === '')) {
+                const timeOnlyMatch = firstColumn.match(/^(\d{1,2}):(\d{2})$/);
+                if (timeOnlyMatch) {
+                    continue; // This is a score line, not a movement
+                }
             }
         }
 
@@ -1259,49 +1451,74 @@ function parseRestDuration(text: string): number | null {
 
 /**
  * Parse scores from grid data
- * Skips the first line (title)
+ * Skips the first line (title) or uses labels to filter lines
  * @param grid - Grid data structure
  * @param timeCap - Optional time cap in seconds (if workout has time cap)
+ * @param labels - Optional labels array to filter SCORE lines
  */
-function parseScores(grid: GridData, timeCap?: number): ScoreElement[] {
+function parseScores(grid: GridData, timeCap?: number, labels?: string[]): ScoreElement[] {
     const scores: ScoreElement[] = [];
     let roundIndex = 0;
     let setIndex = 0;
 
-    // Skip the first line (title) when parsing scores
-    const scoreGrids = grid.slice(1);
+    // Count score lines for round-based detection
+    let scoreLineCount = 0;
+    if (labels && labels.length > 0) {
+        scoreLineCount = labels.filter(label => label === 'SCORE').length;
+    } else {
+        // No labels - estimate: all lines except first (title)
+        scoreLineCount = Math.max(0, grid.length - 1);
+    }
 
-    for (const gridLine of scoreGrids) {
+    // Iterate through all grid lines
+    for (let i = 0; i < grid.length; i++) {
+        const gridLine = grid[i];
         if (!gridLine || gridLine.length === 0) continue;
+
+        // If we have labels, only process SCORE lines
+        // Skip TITLE, MOVEMENT, and INSTRUCTION lines
+        if (labels && labels.length > i) {
+            const label = labels[i];
+            if (label !== 'SCORE') {
+                continue; // Skip non-score lines
+            }
+        } else if (i === 0) {
+            // No labels - skip the first line (title) when parsing scores
+            continue;
+        }
 
         // Join non-empty columns with spaces (pipes are just delimiters, not part of the content)
         const trimmed = gridLine.filter(col => col && col.trim().length > 0).join(' ');
-
-        // Skip headers
-        if (trimmed.match(/^(score|results?|time|reps?|rounds?)\s*\|?$/i)) {
-            continue;
-        }
-
-        // Skip rest/descriptive elements (they should be in workout, not scores)
-        // Check both formats: "rest | 1:00" and "1:00 | rest"
-        // Also check for lines starting with "-" that contain "rest"
-        if (trimmed.match(/^(rest|repeat|then|and)\s*(.*)/i) ||
-            trimmed.match(/^(\d{1,2}:\d{2})\s+(rest|repeat|then|and)/i) ||
-            trimmed.match(/^-\s*(rest|repeat|then|and)/i) ||
-            (gridLine.length >= 2 &&
-                getGridColumn(gridLine, 0).match(/^\d{1,2}:\d{2}$/) &&
-                getGridColumn(gridLine, 1).match(/^(rest|repeat|then|and)$/i))) {
-            continue;
-        }
-
-        // Skip "@" symbol lines (descriptive elements, e.g., "@ | 8:00 |")
-        // But allow "@" in middle if it's a time cap result (e.g., "9 rds | @ | 11min")
         const firstColumn = getGridColumn(gridLine, 0);
+        const hasLabels = labels && labels.length > i && labels[i] === 'SCORE';
 
-        // If "@" is first column, it's a descriptive element - skip
-        // If "@" is in middle with "rds" pattern, it's a time cap result - handle in score parsing
-        if (firstColumn === '@' || trimmed.match(/^@\s*\|/)) {
-            continue; // This is a descriptive element, not a score
+        // With labels, skip classification - AI has already filtered to SCORE lines
+        // Without labels, do full classification to filter out non-scores
+        if (!hasLabels) {
+            // Skip headers
+            if (trimmed.match(/^(score|results?|time|reps?|rounds?)\s*\|?$/i)) {
+                continue;
+            }
+
+            // Skip rest/descriptive elements (they should be in workout, not scores)
+            // Check both formats: "rest | 1:00" and "1:00 | rest"
+            // Also check for lines starting with "-" that contain "rest"
+            if (trimmed.match(/^(rest|repeat|then|and)\s*(.*)/i) ||
+                trimmed.match(/^(\d{1,2}:\d{2})\s+(rest|repeat|then|and)/i) ||
+                trimmed.match(/^-\s*(rest|repeat|then|and)/i) ||
+                (gridLine.length >= 2 &&
+                    getGridColumn(gridLine, 0).match(/^\d{1,2}:\d{2}$/) &&
+                    getGridColumn(gridLine, 1).match(/^(rest|repeat|then|and)$/i))) {
+                continue;
+            }
+
+            // Skip "@" symbol lines (descriptive elements, e.g., "@ | 8:00 |")
+            // But allow "@" in middle if it's a time cap result (e.g., "9 rds | @ | 11min")
+            // If "@" is first column, it's a descriptive element - skip
+            // If "@" is in middle with "rds" pattern, it's a time cap result - handle in score parsing
+            if (firstColumn === '@' || trimmed.match(/^@\s*\|/)) {
+                continue; // This is a descriptive element, not a score
+            }
         }
 
         // Check if this line has a time in the last column (e.g., "30/24 Cal Echo | 13:09")
@@ -1330,42 +1547,46 @@ function parseScores(grid: GridData, timeCap?: number): ScoreElement[] {
             }
         }
 
-        // Skip lines that look like movements (have exercise names, not scores)
-        // Also skip lines that match common exercise patterns
-        if (trimmed.match(/\b(HSPU|Hspu|hspu|Strict|Kipping|Cal Echo|Echo|Building|Clock)\b/i)) {
-            continue; // This is a movement line, not a score
-        }
-
-        if (gridLine.length >= 2) {
-            const col0 = getGridColumn(gridLine, 0);
-            const col1 = getGridColumn(gridLine, 1);
-            const col2 = getGridColumn(gridLine, 2);
-
-            // Check for standard format: amount | exercise | unit
-            // (e.g., "30 | DU", "20 | WB", "200W | Bike erg", "25' | Of Lunge | 50lb")
-            // Amount can be: digits, digits with letters, digits with quotes (like "25'"), or special keywords (like "Max")
-            const isAmountPattern = col0.match(/^\d+[a-zA-Z]*$/) || // Standard: "30", "200W"
-                col0.match(/^\d+['"]$/) || // With quotes: "25'", "10\""
-                col0.match(/^(max|min|as many|as much|unlimited)$/i); // Special keywords
-            if (isAmountPattern && col1 &&
-                !col1.match(/^\d+$/) &&
-                col1 !== '+' &&
-                !col1.match(/^\d{1,2}:\d{2}$/) &&
-                !col1.match(/^\d{1,2}\/\d{1,2}\/\d{2,4}$/) && // Not a date
-                col1.length > 1 &&
-                !col1.match(/^(cal|lbs|kg|min|sec)$/i)) {
-                // Likely a movement line (amount | exercise), not a score
-                continue;
+        // With labels, skip movement filtering - AI has already categorized as SCORE
+        // Without labels, filter out lines that look like movements
+        if (!hasLabels) {
+            // Skip lines that look like movements (have exercise names, not scores)
+            // Also skip lines that match common exercise patterns
+            if (trimmed.match(/\b(HSPU|Hspu|hspu|Strict|Kipping|Cal Echo|Echo|Building|Clock)\b/i)) {
+                continue; // This is a movement line, not a score
             }
 
-            // Check for reversed format: amount | unit | exercise
-            // (e.g., "15 | cal | ski:", "30 | cal | Bike", "30 | ca | Bike")
-            // Note: "ca" is an abbreviation for "cal"
-            if (gridLine.length >= 3 && col0.match(/^\d+[a-zA-Z]*$/) &&
-                col1 && col1.match(/^(cal|ca|lbs|kg|min|sec)$/i) &&
-                col2 && col2.length > 1 && !col2.match(/^\d+$/) && !col2.match(/^\d{1,2}:\d{2}$/)) {
-                // This is definitely a movement line (amount | unit | exercise), not a score
-                continue;
+            if (gridLine.length >= 2) {
+                const col0 = getGridColumn(gridLine, 0);
+                const col1 = getGridColumn(gridLine, 1);
+                const col2 = getGridColumn(gridLine, 2);
+
+                // Check for standard format: amount | exercise | unit
+                // (e.g., "30 | DU", "20 | WB", "200W | Bike erg", "25' | Of Lunge | 50lb")
+                // Amount can be: digits, digits with letters, digits with quotes (like "25'"), or special keywords (like "Max")
+                const isAmountPattern = col0.match(/^\d+[a-zA-Z]*$/) || // Standard: "30", "200W"
+                    col0.match(/^\d+['"]$/) || // With quotes: "25'", "10\""
+                    col0.match(/^(max|min|as many|as much|unlimited)$/i); // Special keywords
+                if (isAmountPattern && col1 &&
+                    !col1.match(/^\d+$/) &&
+                    col1 !== '+' &&
+                    !col1.match(/^\d{1,2}:\d{2}$/) &&
+                    !col1.match(/^\d{1,2}\/\d{1,2}\/\d{2,4}$/) && // Not a date
+                    col1.length > 1 &&
+                    !col1.match(/^(cal|lbs|kg|min|sec)$/i)) {
+                    // Likely a movement line (amount | exercise), not a score
+                    continue;
+                }
+
+                // Check for reversed format: amount | unit | exercise
+                // (e.g., "15 | cal | ski:", "30 | cal | Bike", "30 | ca | Bike")
+                // Note: "ca" is an abbreviation for "cal"
+                if (gridLine.length >= 3 && col0.match(/^\d+[a-zA-Z]*$/) &&
+                    col1 && col1.match(/^(cal|ca|lbs|kg|min|sec)$/i) &&
+                    col2 && col2.length > 1 && !col2.match(/^\d+$/) && !col2.match(/^\d{1,2}:\d{2}$/)) {
+                    // This is definitely a movement line (amount | unit | exercise), not a score
+                    continue;
+                }
             }
         }
 
@@ -1451,7 +1672,7 @@ function parseScores(grid: GridData, timeCap?: number): ScoreElement[] {
                     // Date in col0, time in col1 - use col1
                     const timeInSeconds = parseTimeToSeconds(col1);
                     if (timeInSeconds !== null && timeInSeconds < 3600) {
-                        const isRoundBased = scoreGrids.length > 2;
+                        const isRoundBased = scoreLineCount > 2;
                         const scoreName = setIndex > 0
                             ? `Set ${setIndex}` as ScoreName
                             : (roundIndex === 0 && !isRoundBased)
@@ -1488,7 +1709,7 @@ function parseScores(grid: GridData, timeCap?: number): ScoreElement[] {
                     if (timeInSeconds !== null && timeInSeconds < 3600) {
                         // For EMOM/round-based workouts, use Round names. Only use "Finish Time" if it's the only time.
                         // Check if this is likely a round-based workout (multiple times in sequence)
-                        const isRoundBased = scoreGrids.length > 2; // If there are multiple score lines, likely rounds
+                        const isRoundBased = scoreLineCount > 2; // If there are multiple score lines, likely rounds
                         const scoreName = setIndex > 0
                             ? `Set ${setIndex}` as ScoreName
                             : (roundIndex === 0 && !isRoundBased)
@@ -1700,16 +1921,21 @@ function parseScores(grid: GridData, timeCap?: number): ScoreElement[] {
             scoreLine = scoreLine.replace(/\d{1,2}\/\d{1,2}\/\d{2,4}/, '').trim();
         }
 
-        // Skip if this looks like a movement (has exercise name, not just numbers)
-        // Check for common exercise keywords that indicate this is a movement, not a score
-        // But don't skip if it's a score pattern like "rounds + reps" or has "@" for time cap
-        const hasExerciseKeyword = trimmed.match(/\b(deadlift|squat|press|clean|snatch|jerk|thruster|burpee|pull.?up|push.?up|muscle.?up|ring.?muscle.?up|toes.?to.?bar|kettlebell|dumbbell|barbell|wall.?ball|box.?jump|double.?under|single.?under|row|bike|run|ski|cal|du|wb|ctb|bjo|hpc|dl|sn|cj|fs|bs|ohs|pu|mu|rmu|t2b|t2r|kbs)\b/i);
-        const isScorePattern = trimmed.match(/rounds?\s*\+\s*\d+\s*reps?/i) ||
-            trimmed.match(/\d+\s*rds?\s*@/i) ||
-            (gridLine.length >= 2 && getGridColumn(gridLine, 1) === '@');
-        if (hasExerciseKeyword && !isScorePattern) {
-            // This is a movement line, not a score
-            continue;
+        // With labels, skip movement filtering - AI has already categorized as SCORE
+        // Without labels, filter out lines that look like movements
+        let hasExerciseKeyword = false;
+        if (!hasLabels) {
+            // Skip if this looks like a movement (has exercise name, not just numbers)
+            // Check for common exercise keywords that indicate this is a movement, not a score
+            // But don't skip if it's a score pattern like "rounds + reps" or has "@" for time cap
+            hasExerciseKeyword = !!trimmed.match(/\b(deadlift|squat|press|clean|snatch|jerk|thruster|burpee|pull.?up|push.?up|muscle.?up|ring.?muscle.?up|toes.?to.?bar|kettlebell|dumbbell|barbell|wall.?ball|box.?jump|double.?under|single.?under|row|bike|run|ski|cal|du|wb|ctb|bjo|hpc|dl|sn|cj|fs|bs|ohs|pu|mu|rmu|t2b|t2r|kbs)\b/i);
+            const isScorePattern = trimmed.match(/rounds?\s*\+\s*\d+\s*reps?/i) ||
+                trimmed.match(/\d+\s*rds?\s*@/i) ||
+                (gridLine.length >= 2 && getGridColumn(gridLine, 1) === '@');
+            if (hasExerciseKeyword && !isScorePattern) {
+                // This is a movement line, not a score
+                continue;
+            }
         }
 
         const repsMatch = scoreLine.match(/(\d+)\s*(?:rounds?)?\s*(?:\+\s*)?(\d+)?\s*(?:reps?)?/i);
@@ -1894,35 +2120,18 @@ function calculateConfidence(ocrData: OCRData, elements: WorkoutElement[], score
  * Parse workout from raw text (for testing/iteration without calling Gemini)
  */
 export function parseWorkoutFromRawText(rawText: string): WorkoutExtraction {
-    // Clean up Gemini's pipe output before parsing
-    const cleanedText = cleanGeminiPipeOutput(rawText);
-
-    // Create OCRData structure from raw text
-    const textLines = cleanedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-
-    // Extract words with confidence for confidence calculation
-    const words: OCRData['words'] = textLines
-        .flatMap(lineText => lineText.split(/\s+/))
-        .map(word => ({
-            text: word,
-            confidence: 0.95,
-        }));
-
-    const ocrData: OCRData = {
-        text: textLines.join('\n'),
-        words,
-        lines: textLines, // Just the text lines
-    };
+    // Process through processExtractedText to handle labels if present
+    const ocrData = processExtractedText(rawText);
 
     // Step 2: Get all lines and build full grid structure
     const allLines = getAllLines(ocrData);
     const grid = buildGrid(allLines);
 
-    // Step 3: Parse sections from grid
-    const titleData = parseTitle(grid);
+    // Step 3: Parse sections from grid (with labels if available)
+    const titleData = parseTitle(grid, ocrData.labels);
     const title = titleData.title;
-    const movements = parseMovements(grid);
-    const scores = parseScores(grid, titleData.timeCap);
+    const movements = parseMovements(grid, ocrData.labels);
+    const scores = parseScores(grid, titleData.timeCap, ocrData.labels);
 
     // Step 4: Detect workout type
     const workoutType = detectWorkoutType(title, movements, scores);
@@ -1967,7 +2176,9 @@ export function parseWorkoutFromRawText(rawText: string): WorkoutExtraction {
  */
 function parseFromOCRData(ocrData: OCRData, rawGeminiText?: string): WorkoutExtraction {
     const parsingStartTime = Date.now();
-    console.log(`  [Parsing] Starting parsing of ${ocrData.lines.length} lines...`);
+    const hasLabels = ocrData.labels && ocrData.labels.length > 0;
+    const labelCount = hasLabels ? ocrData.labels!.filter(l => l && l.length > 0).length : 0;
+    console.log(`  [Parsing] Starting parsing of ${ocrData.lines.length} lines${hasLabels ? ` (${labelCount} labeled lines)` : ''}...`);
 
     // Step 2: Get all lines and build full grid structure
     const gridStartTime = Date.now();
@@ -1977,11 +2188,12 @@ function parseFromOCRData(ocrData: OCRData, rawGeminiText?: string): WorkoutExtr
 
     // Step 3: Parse sections from grid
     const parseStartTime = Date.now();
-    const titleData = parseTitle(grid);
+    const titleData = parseTitle(grid, ocrData.labels);
     const title = titleData.title;
-    const movements = parseMovements(grid);
-    const scores = parseScores(grid, titleData.timeCap);
-    console.log(`  [Parsing] Parsed: title="${title}", ${movements.length} movements, ${scores.length} scores (${((Date.now() - parseStartTime) / 1000).toFixed(3)}s)`);
+    const movements = parseMovements(grid, ocrData.labels);
+    const scores = parseScores(grid, titleData.timeCap, ocrData.labels);
+    const parsingMode = hasLabels ? 'label-based' : 'classification-based';
+    console.log(`  [Parsing] Parsed: title="${title}", ${movements.length} movements, ${scores.length} scores (${parsingMode}, ${((Date.now() - parseStartTime) / 1000).toFixed(3)}s)`);
 
     // Step 4: Detect workout type
     const typeStartTime = Date.now();

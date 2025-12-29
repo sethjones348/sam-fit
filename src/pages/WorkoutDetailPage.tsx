@@ -16,6 +16,10 @@ export default function WorkoutDetailPage() {
     const [workout, setWorkout] = useState<Workout | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isOwnWorkout, setIsOwnWorkout] = useState(false);
+    const [showRawGeminiText, setShowRawGeminiText] = useState(false);
+    
+    // Check if current user is sethjones348@gmail.com
+    const isDebugUser = user?.email === 'sethjones348@gmail.com';
 
     useEffect(() => {
         if (!id || !isAuthenticated) {
@@ -217,16 +221,25 @@ export default function WorkoutDetailPage() {
                             </div>
                         )}
 
-                        <div>
-                            <h2 className="text-xl font-heading font-bold mb-2">Raw Text</h2>
-                            <div className="bg-gray-50 p-4 rounded border border-gray-200">
-                                {workout.rawText.map((line, idx) => (
-                                    <p key={idx} className="text-gray-700 font-mono text-sm">
-                                        {line}
-                                    </p>
-                                ))}
+                        {/* Debug button - only visible to sethjones348@gmail.com */}
+                        {isDebugUser && workout.metadata?.rawGeminiText && (
+                            <div>
+                                <button
+                                    onClick={() => setShowRawGeminiText(!showRawGeminiText)}
+                                    className="text-xs text-gray-500 hover:text-gray-700 underline mb-2"
+                                >
+                                    {showRawGeminiText ? 'Hide' : 'Show'} Raw Gemini Output
+                                </button>
+                                {showRawGeminiText && (
+                                    <div className="bg-gray-50 p-4 rounded border border-gray-200 mt-2">
+                                        <h3 className="text-sm font-semibold mb-2 text-gray-700">Raw Gemini Output:</h3>
+                                        <pre className="text-xs text-gray-700 font-mono whitespace-pre-wrap break-words max-h-96 overflow-y-auto">
+                                            {workout.metadata.rawGeminiText}
+                                        </pre>
+                                    </div>
+                                )}
                             </div>
-                        </div>
+                        )}
                     </div>
                     
                     {/* Comments Section */}
