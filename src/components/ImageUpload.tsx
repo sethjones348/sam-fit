@@ -1,5 +1,6 @@
 import { useState, useRef, DragEvent } from 'react';
 import exifr from 'exifr';
+import ImageCrop from './ImageCrop';
 
 interface ImageUploadProps {
   onUpload: (imageBase64: string, dateTaken?: string) => void;
@@ -13,6 +14,8 @@ export default function ImageUpload({
   uploadedImage,
 }: ImageUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+  const [exifDate, setExifDate] = useState<string | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File) => {
@@ -42,14 +45,32 @@ export default function ImageUpload({
       // Continue without date - will default to upload date
     }
 
+    // Store EXIF date for later use
+    setExifDate(dateTaken);
+
+    // Load image for cropping
     const reader = new FileReader();
     reader.onload = (e) => {
       const result = e.target?.result;
       if (typeof result === 'string') {
-        onUpload(result, dateTaken);
+        setImageToCrop(result);
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleCropComplete = (croppedImageBase64: string) => {
+    setImageToCrop(null);
+    onUpload(croppedImageBase64, exifDate);
+  };
+
+  const handleCropCancel = () => {
+    setImageToCrop(null);
+    setExifDate(undefined);
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
@@ -96,6 +117,18 @@ export default function ImageUpload({
     }
   };
 
+  // Show crop interface if image is ready to be cropped
+  if (imageToCrop) {
+    return (
+      <ImageCrop
+        src={imageToCrop}
+        onCropComplete={handleCropComplete}
+        onCancel={handleCropCancel}
+      />
+    );
+  }
+
+  // Show uploaded image with extraction status
   if (uploadedImage) {
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-6">
