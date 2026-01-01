@@ -3,11 +3,13 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getUnreadCount } from '../services/notificationService';
 import { supabase } from '../lib/supabase';
+import { isAdmin } from '../services/adminService';
 
 export default function Navbar() {
     const [scrolled, setScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [userIsAdmin, setUserIsAdmin] = useState(false);
     const { user, isAuthenticated, logout } = useAuth();
     const location = useLocation();
 
@@ -19,10 +21,11 @@ export default function Navbar() {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    // Load unread notification count
+    // Load unread notification count and check admin status
     useEffect(() => {
         if (!isAuthenticated || !user?.id) {
             setUnreadCount(0);
+            setUserIsAdmin(false);
             return;
         }
 
@@ -35,7 +38,18 @@ export default function Navbar() {
             }
         };
 
+        const checkAdminStatus = async () => {
+            try {
+                const admin = await isAdmin();
+                setUserIsAdmin(admin);
+            } catch (err) {
+                console.error('Failed to check admin status:', err);
+                setUserIsAdmin(false);
+            }
+        };
+
         loadUnreadCount();
+        checkAdminStatus();
 
         // Subscribe to real-time notification updates
         const channel = supabase
@@ -113,6 +127,17 @@ export default function Navbar() {
                         >
                             Friends
                         </Link>
+                        {userIsAdmin && (
+                            <Link
+                                to="/admin"
+                                className={`text-sm font-semibold uppercase tracking-wider transition-colors ${isActive('/admin')
+                                    ? 'text-cf-red'
+                                    : 'text-black hover:text-cf-red'
+                                    }`}
+                            >
+                                Admin
+                            </Link>
+                        )}
                     </div>
 
                     {/* Mobile Menu Button */}
@@ -247,6 +272,18 @@ export default function Navbar() {
                             >
                                 Friends
                             </Link>
+                            {userIsAdmin && (
+                                <Link
+                                    to="/admin"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className={`px-4 py-2 text-sm font-semibold uppercase tracking-wider transition-colors ${isActive('/admin')
+                                        ? 'text-cf-red'
+                                        : 'text-black hover:text-cf-red'
+                                        }`}
+                                >
+                                    Admin
+                                </Link>
+                            )}
                             {isAuthenticated && user && (
                                 <Link
                                     to="/notifications"

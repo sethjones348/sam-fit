@@ -24,6 +24,7 @@ export interface UserProfile {
   username?: string; // Unique username/handle for friend connections
   picture?: string;
   bio?: string;
+  is_admin?: boolean; // Whether the user has admin privileges
   // CrossFit-related fields
   boxName?: string; // CrossFit box/gym name
   level?: string; // e.g., "Beginner", "Intermediate", "Advanced", "Rx"
@@ -187,6 +188,7 @@ export async function updateUserProfile(
     boxName: profile.box_name,
     favoriteMovements: profile.favorite_movements || [],
     prs: profile.prs || {},
+    is_admin: profile.is_admin || false,
   } as UserProfile;
 }
 
@@ -215,6 +217,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     boxName: profile.box_name,
     favoriteMovements: profile.favorite_movements || [],
     prs: profile.prs || {},
+    is_admin: profile.is_admin || false,
   } as UserProfile;
 }
 
@@ -243,6 +246,7 @@ export async function getUserProfileByEmail(email: string): Promise<UserProfile 
     boxName: profile.box_name,
     favoriteMovements: profile.favorite_movements || [],
     prs: profile.prs || {},
+    is_admin: profile.is_admin || false,
   } as UserProfile;
 }
 
@@ -271,6 +275,7 @@ export async function getUserProfileByUsername(username: string): Promise<UserPr
     boxName: profile.box_name,
     favoriteMovements: profile.favorite_movements || [],
     prs: profile.prs || {},
+    is_admin: profile.is_admin || false,
   } as UserProfile;
 }
 

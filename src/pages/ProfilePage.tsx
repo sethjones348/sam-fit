@@ -463,6 +463,9 @@ export default function ProfilePage() {
                   ) : (
                     <p className="text-sm md:text-base text-gray-500 italic">No username set</p>
                   )}
+                  {isOwnProfile && profile.email && (
+                    <p className="text-sm md:text-base text-gray-500">{profile.email}</p>
+                  )}
                 </div>
               </div>
               {isOwnProfile && (
